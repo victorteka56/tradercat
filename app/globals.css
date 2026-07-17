@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Neutral, editorial, calm — per the design brief */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --ink: #14181f;
+  --ink-soft: #59616e;
+  --ink-faint: #8b94a3;
+  --line: #e7eaf0;
+  --info: #3a5a9c; /* muted slate-blue for information */
+  --pos: #17915f; /* green ONLY for market/P&L up */
+  --neg: #d0453b; /* red ONLY for market/P&L down */
+  --amber: #c68a1d; /* risk / attention */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular numerals for every financial value */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Thin, unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
