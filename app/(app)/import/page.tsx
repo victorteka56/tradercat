@@ -7,13 +7,18 @@ import { getConnections } from "@/lib/queries/brokerage";
 import { ImportForm } from "./ImportForm";
 import { ClearButton } from "./ClearButton";
 import { BrokerageCard } from "./BrokerageCard";
+import { DevTools } from "./DevTools";
+import { getDevCounts } from "./dev-actions";
+
+const DEV = process.env.NODE_ENV !== "production";
 
 export default async function ImportPage() {
   const user = await requireUser();
-  const [stats, imports, connections] = await Promise.all([
+  const [stats, imports, connections, devCounts] = await Promise.all([
     getJournalStats(user.id),
     getRecentImports(user.id),
     getConnections(user.id),
+    DEV ? getDevCounts(user.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -113,6 +118,8 @@ export default async function ImportPage() {
           )}
         </div>
       </div>
+
+      {DEV && devCounts && <DevTools userId={user.id} initial={devCounts} />}
     </main>
   );
 }

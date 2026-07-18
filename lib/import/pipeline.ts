@@ -163,6 +163,11 @@ export async function runReconstruction(
         price: fills.price,
         amount: fills.amount,
         executedAt: fills.executedAt,
+        source: fills.source,
+        accountId: fills.accountId,
+        optionType: fills.optionType,
+        strike: fills.strike,
+        expiry: fills.expiry,
       })
       .from(fills)
       .where(eq(fills.userId, userId));
@@ -176,7 +181,19 @@ export async function runReconstruction(
       price: r.price === null ? null : Number(r.price),
       amount: Number(r.amount),
       executedAt: r.executedAt,
+      scope: r.accountId ? `acct:${r.accountId}` : "csv",
+      optionType: r.optionType,
+      strike: r.strike === null ? null : Number(r.strike),
+      expiry: r.expiry,
     }));
+
+    // A trade inherits its origin from its fills (all share a scope by design).
+    const originByScope = new Map(
+      rows.map((r) => [
+        r.accountId ? `acct:${r.accountId}` : "csv",
+        { source: r.source, accountId: r.accountId },
+      ]),
+    );
 
     const drafts = reconstructTrades(input);
     let upserted = 0;
@@ -189,6 +206,10 @@ export async function runReconstruction(
             userId,
             reconstructionRunId: run.id,
             groupKey: d.groupKey,
+            source:
+              originByScope.get(d.groupKey.split("|")[0])?.source ?? "robinhood_csv",
+            accountId:
+              originByScope.get(d.groupKey.split("|")[0])?.accountId ?? null,
             symbol: d.symbol,
             description: d.description,
             kind: d.kind,
@@ -215,6 +236,8 @@ export async function runReconstruction(
           target: [trades.userId, trades.groupKey],
           set: {
             reconstructionRunId: sql`excluded.reconstruction_run_id`,
+            source: sql`excluded.source`,
+            accountId: sql`excluded.account_id`,
             description: sql`excluded.description`,
             kind: sql`excluded.kind`,
             direction: sql`excluded.direction`,
@@ -306,6 +329,60 @@ export async function runReconstruction(
       .where(eq(reconstructionRuns.id, run.id));
     throw err;
   }
+}
+
+/**
+ * Persists already-mapped brokerage fills for one account, then rebuilds trades.
+ * Same idempotency contract as the CSV path: re-syncing inserts nothing new.
+ */
+export async function ingestBrokerageFills(
+  userId: string,
+  accountId: string,
+  mapped: {
+    symbol: string;
+    description: string;
+    code: string;
+    quantity: number;
+    price: number | null;
+    amount: number;
+    executedAt: Date;
+    idempotencyKey: string;
+    raw: unknown;
+    optionType: "call" | "put" | null;
+    strike: number | null;
+    expiry: Date | null;
+    externalId: string | null;
+  }[],
+): Promise<{ inserted: number; duplicates: number }> {
+  let inserted = 0;
+  for (const part of chunk(mapped, 500)) {
+    const rows = await db
+      .insert(fills)
+      .values(
+        part.map((f) => ({
+          userId,
+          accountId,
+          source: "snaptrade" as const,
+          symbol: f.symbol,
+          description: f.description,
+          code: f.code,
+          quantity: n(f.quantity)!,
+          price: n(f.price),
+          amount: n(f.amount)!,
+          executedAt: f.executedAt,
+          externalId: f.externalId,
+          idempotencyKey: f.idempotencyKey,
+          optionType: f.optionType,
+          strike: n(f.strike),
+          expiry: f.expiry,
+          raw: f.raw as Record<string, unknown>,
+        })),
+      )
+      .onConflictDoNothing({ target: [fills.userId, fills.idempotencyKey] })
+      .returning({ id: fills.id });
+    inserted += rows.length;
+  }
+  return { inserted, duplicates: mapped.length - inserted };
 }
 
 /** Removes every imported fill and trade for a user. */

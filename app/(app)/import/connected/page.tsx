@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { requireUser } from "@/lib/auth";
 import { syncBrokerageData } from "@/lib/snaptrade/sync";
+import { precomputeReviews } from "@/lib/ai/precompute";
 
 /**
  * Where SnapTrade's portal returns after a connection attempt. We sync
@@ -10,12 +11,16 @@ import { syncBrokerageData } from "@/lib/snaptrade/sync";
 export default async function ConnectedPage() {
   const user = await requireUser();
 
-  let outcome: { connections: number; accounts: number; positions: number } | null =
-    null;
+  let outcome: Awaited<ReturnType<typeof syncBrokerageData>> | null = null;
   let error: string | null = null;
 
   try {
     outcome = await syncBrokerageData(user.id);
+    // Kick off review precompute in the background so trades are analysed
+    // before the user opens them. Detached — never blocks this page.
+    if (outcome.fillsInserted > 0) {
+      void precomputeReviews(user.id).catch(() => {});
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : "Could not sync your brokerage.";
   }

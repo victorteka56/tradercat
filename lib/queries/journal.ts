@@ -2,7 +2,13 @@ import "server-only";
 
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { fills, importBatches, tradeLegs, trades } from "@/lib/db/schema";
+import {
+  brokerageAccounts,
+  fills,
+  importBatches,
+  tradeLegs,
+  trades,
+} from "@/lib/db/schema";
 
 /**
  * Every query here takes userId and filters on it. Never export a helper that
@@ -37,12 +43,20 @@ export interface JournalTrade {
   mae: number | null;
   mfe: number | null;
   capturedPct: number | null;
+  /** Where this trade came from — drives the broker badge. */
+  source: "robinhood_csv" | "snaptrade" | "other_csv";
+  brokerName: string | null;
 }
 
 const toNum = (v: string | null): number | null => (v === null ? null : Number(v));
 
-function mapTrade(r: typeof trades.$inferSelect): JournalTrade {
+function mapTrade(
+  r: typeof trades.$inferSelect,
+  brokerName: string | null = null,
+): JournalTrade {
   return {
+    source: r.source,
+    brokerName,
     id: r.id,
     symbol: r.symbol,
     description: r.description,
@@ -75,12 +89,14 @@ export async function getTrades(
   opts: { limit?: number } = {},
 ): Promise<JournalTrade[]> {
   const rows = await db
-    .select()
+    .select({ trade: trades, brokerName: brokerageAccounts.institutionName })
     .from(trades)
+    // Left join: CSV-imported trades have no account and must still appear.
+    .leftJoin(brokerageAccounts, eq(brokerageAccounts.id, trades.accountId))
     .where(eq(trades.userId, userId))
     .orderBy(desc(sql`coalesce(${trades.exitAt}, ${trades.entryAt})`))
-    .limit(opts.limit ?? 1000);
-  return rows.map(mapTrade);
+    .limit(opts.limit ?? 2000);
+  return rows.map((r) => mapTrade(r.trade, r.brokerName));
 }
 
 export async function getTradeById(
@@ -88,13 +104,14 @@ export async function getTradeById(
   tradeId: string,
 ): Promise<JournalTrade | null> {
   const rows = await db
-    .select()
+    .select({ trade: trades, brokerName: brokerageAccounts.institutionName })
     .from(trades)
+    .leftJoin(brokerageAccounts, eq(brokerageAccounts.id, trades.accountId))
     // Tenant filter is part of the lookup, not an afterthought — a valid id
     // from another user must not resolve.
     .where(and(eq(trades.id, tradeId), eq(trades.userId, userId)))
     .limit(1);
-  return rows[0] ? mapTrade(rows[0]) : null;
+  return rows[0] ? mapTrade(rows[0].trade, rows[0].brokerName) : null;
 }
 
 export interface TradeFill {

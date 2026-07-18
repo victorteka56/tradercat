@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { SourceBadge } from "@/components/journal/SourceBadge";
 import type { JournalTrade } from "@/lib/queries/journal";
 import { tradeLabel, tradeSubtitle } from "@/lib/trade-display";
 import { usd, holdingLabel } from "@/lib/format";
@@ -28,6 +29,7 @@ export function JournalTradeRow({ trade }: { trade: JournalTrade }) {
           <span className="truncate text-[14px] font-semibold text-ink">
             {tradeLabel(trade)}
           </span>
+          <SourceBadge trade={trade} />
           {trade.status === "open" && <StatusChip tone="info">Open</StatusChip>}
         </div>
         <div className="tnum mt-0.5 truncate text-[11px] text-ink-soft">

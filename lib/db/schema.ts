@@ -172,6 +172,71 @@ export const positions = pgTable(
   }),
 );
 
+/* --------------------------------- AI ------------------------------------- */
+
+/**
+ * Cached AI outputs, keyed by a hash of the exact input.
+ *
+ * The hash is the cost control: identical inputs never re-bill, and it also
+ * means a trade's review is regenerated only when its underlying numbers
+ * actually change. Store model + tokens per AGENTS.md's AI-accounting rule.
+ */
+export const aiAnalyses = pgTable(
+  "ai_analyses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    tradeId: uuid("trade_id")
+      .notNull()
+      .references(() => trades.id, { onDelete: "cascade" }),
+    type: text("type").notNull().default("trade_review"),
+    inputHash: text("input_hash").notNull(),
+    model: text("model").notNull(),
+    output: jsonb("output").notNull(),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    cacheKey: uniqueIndex("ai_analyses_cache_key").on(
+      t.userId,
+      t.tradeId,
+      t.inputHash,
+    ),
+  }),
+);
+
+/* ------------------------------ market data ------------------------------- */
+
+/**
+ * Cached OHLC bars, keyed by symbol+interval+timestamp.
+ *
+ * Not user-scoped: price history is public data, shared across every user, and
+ * caching it is what keeps the market-data bill flat. Partitioning can come
+ * later if volume demands it (see AGENTS.md).
+ */
+export const priceCandles = pgTable(
+  "price_candles",
+  {
+    symbol: text("symbol").notNull(),
+    /** "1min" | "5min" | "15min" | "1hour" | "1day" */
+    interval: text("interval").notNull(),
+    ts: timestamp("ts", { withTimezone: true }).notNull(),
+    open: numeric("open", { precision: 20, scale: 8 }).notNull(),
+    high: numeric("high", { precision: 20, scale: 8 }).notNull(),
+    low: numeric("low", { precision: 20, scale: 8 }).notNull(),
+    close: numeric("close", { precision: 20, scale: 8 }).notNull(),
+    volume: numeric("volume", { precision: 24, scale: 4 }),
+    provider: text("provider").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: uniqueIndex("price_candles_pk").on(t.symbol, t.interval, t.ts),
+  }),
+);
+
 /* -------------------------------- profiles -------------------------------- */
 
 export const profiles = pgTable("profiles", {
@@ -237,10 +302,25 @@ export const fills = pgTable(
     importBatchId: uuid("import_batch_id").references(() => importBatches.id, {
       onDelete: "set null",
     }),
+    /** Where this fill came from: a CSV import or a specific brokerage account. */
+    source: importSourceTypeEnum("source").notNull().default("robinhood_csv"),
+    accountId: uuid("account_id").references(() => brokerageAccounts.id, {
+      onDelete: "cascade",
+    }),
+
     symbol: text("symbol").notNull(),
     description: text("description"),
     /** Broker code as-imported: BTO / STC / STO / BTC / Buy / Sell / OEXP / OASGN. */
     code: text("code").notNull(),
+
+    /**
+     * Structured option detail. Brokerage feeds supply these directly, so
+     * reconstruction never has to regex a description — the source of two real
+     * bugs on the CSV path. Null for stock fills.
+     */
+    optionType: optionTypeEnum("option_type"),
+    strike: numeric("strike", { precision: 20, scale: 8 }),
+    expiry: timestamp("expiry", { withTimezone: true }),
     quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(),
     price: numeric("price", { precision: 20, scale: 8 }),
     amount: numeric("amount", { precision: 20, scale: 2 }).notNull(),
@@ -300,11 +380,20 @@ export const trades = pgTable(
     ),
 
     /**
-     * Stable natural key for a position (contract or instrument) within a user.
-     * Reconstruction upserts on this, so re-importing preserves trade ids —
-     * and therefore any tags/notes hanging off them.
+     * Stable natural key for a position within a user.
+     *
+     * Scoped by origin (`csv:` or `acct:<id>:`) so the same contract traded at
+     * two brokers stays two trades instead of colliding into one. Reconstruction
+     * upserts on this, so re-syncing preserves trade ids — and any tags/notes
+     * hanging off them.
      */
     groupKey: text("group_key").notNull(),
+
+    /** Which account/import these fills came from — drives the broker badge. */
+    source: importSourceTypeEnum("source").notNull().default("robinhood_csv"),
+    accountId: uuid("account_id").references(() => brokerageAccounts.id, {
+      onDelete: "cascade",
+    }),
 
     symbol: text("symbol").notNull(),
     description: text("description"),

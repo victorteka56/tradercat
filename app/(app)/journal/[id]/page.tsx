@@ -3,18 +3,24 @@ import { notFound } from "next/navigation";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { requireUser } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { getTradeById, getTradeFills } from "@/lib/queries/journal";
 import { tradeLabel, tradeSubtitle } from "@/lib/trade-display";
-import { usd, holdingLabel } from "@/lib/format";
-
-const day = (d: Date | null) =>
-  d
-    ? new Date(d).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "—";
+import {
+  usd,
+  holdingLabel,
+  dayLabel,
+  timeLabel,
+  dateTimeLabel,
+  hasTimeOfDay,
+} from "@/lib/format";
+import { SourceBadge } from "@/components/journal/SourceBadge";
+import { TradeChartCard } from "@/components/journal/TradeChartCard";
+import { ExcursionCard } from "@/components/journal/ExcursionCard";
+import { TradeReviewPanel } from "@/components/journal/TradeReviewPanel";
+import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
+import { computeExcursions } from "@/lib/analysis/excursions";
+import { getInitialReview } from "@/lib/ai/trade-review";
 
 export default async function TradeDetailPage({
   params,
@@ -27,6 +33,55 @@ export default async function TradeDetailPage({
 
   const fills = await getTradeFills(user.id, trade.id);
   const up = trade.netPnl >= 0;
+
+  /**
+   * A chart is only honest when we know *when* the trade happened. CSV fills
+   * land on midnight, so plotting them would invent precision we don't have.
+   */
+  const canChart =
+    marketDataConfigured && trade.entryAt != null && hasTimeOfDay(trade.entryAt);
+
+  const chart = canChart
+    ? await getTradeChart(trade.symbol, trade.entryAt!, trade.exitAt).catch(
+        () => null,
+      )
+    : null;
+
+  const chartData = chart
+    ? {
+        candles: chart.candles.map((c) => ({
+          time: Math.floor(c.ts.getTime() / 1000),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        })),
+        entryPrice: chart.entryPrice,
+        exitPrice: chart.exitPrice,
+      }
+    : null;
+
+  // Computed timing metrics (free, deterministic) — the basis for the AI review.
+  const excursions =
+    chart && chart.entryPrice != null && chart.exitPrice != null && trade.entryAt
+      ? computeExcursions(
+          chart.candles,
+          trade.entryAt,
+          trade.exitAt,
+          chart.entryPrice,
+          chart.exitPrice,
+          trade.kind,
+          trade.direction,
+          trade.optionType,
+        )
+      : null;
+
+  // Initial review state — no spend. Returns a cached AI review if one exists,
+  // otherwise the computed floor, which the client upgrades in the background.
+  const initialReview =
+    Boolean(env.DEEPSEEK_API_KEY) && excursions
+      ? await getInitialReview(user.id, trade.id).catch(() => null)
+      : null;
 
   return (
     <main className="px-4 pt-14 lg:mx-auto lg:max-w-[900px] lg:pt-10">
@@ -46,6 +101,7 @@ export default async function TradeDetailPage({
             <StatusChip tone={trade.direction === "long" ? "pos" : "neg"}>
               {trade.direction}
             </StatusChip>
+            <SourceBadge trade={trade} />
             {trade.status === "open" && <StatusChip tone="info">Open</StatusChip>}
           </div>
           <div className="tnum mt-1 text-[13px] text-ink-soft">
@@ -63,6 +119,13 @@ export default async function TradeDetailPage({
           <div className="text-[12px] text-ink-soft">realized</div>
         </div>
       </div>
+
+      {/* The chart leads — it's the fastest way to see what actually happened. */}
+      <TradeChartCard
+        trade={trade}
+        data={chartData}
+        marketDataConfigured={marketDataConfigured}
+      />
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
         <div>
@@ -92,8 +155,16 @@ export default async function TradeDetailPage({
             <KV label="Closed" value={String(trade.closedQty)} />
             <KV label="Cost" value={usd(trade.cost)} />
             <KV label="Proceeds" value={usd(trade.proceeds)} />
-            <KV label="First fill" value={day(trade.entryAt)} />
-            <KV label="Last fill" value={day(trade.exitAt)} />
+            <KV
+              label="Opened"
+              value={dayLabel(trade.entryAt)}
+              sub={timeLabel(trade.entryAt)}
+            />
+            <KV
+              label="Closed"
+              value={dayLabel(trade.exitAt)}
+              sub={timeLabel(trade.exitAt)}
+            />
           </SurfaceCard>
 
           {/* R-multiple must never appear without a defined risk basis. */}
@@ -125,53 +196,55 @@ export default async function TradeDetailPage({
         </div>
 
         <div>
-          {/* Excursions come from intraday candles — not invented. */}
-          <SurfaceCard className="mb-4 p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <StatusChip tone="neutral">MAE / MFE</StatusChip>
-            </div>
-            {trade.mae != null && trade.mfe != null ? (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                    Max adverse
-                  </div>
-                  <div className="tnum mt-1 text-[18px] font-semibold text-neg">
-                    {usd(-trade.mae)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                    Max favorable
-                  </div>
-                  <div className="tnum mt-1 text-[18px] font-semibold text-pos">
-                    {usd(trade.mfe, { sign: true })}
-                  </div>
-                </div>
+          {excursions ? (
+            <ExcursionCard excursions={excursions} symbol={trade.symbol} />
+          ) : (
+            <SurfaceCard className="mb-4 p-4">
+              <div className="mb-2">
+                <StatusChip tone="neutral">Timing</StatusChip>
               </div>
-            ) : (
               <p className="text-[12.5px] leading-relaxed text-ink-soft">
-                Not computed yet. Measuring how far price moved for and against
-                this trade needs intraday price history, which isn&apos;t
-                connected yet.
+                Measuring how far {trade.symbol} moved for and against this trade
+                needs intraday price history with exact times.{" "}
+                {trade.source !== "snaptrade"
+                  ? "CSV imports don't include times — connect your brokerage."
+                  : "It isn't available for this trade yet."}
               </p>
-            )}
-          </SurfaceCard>
+            </SurfaceCard>
+          )}
 
-          <SurfaceCard className="mb-4 p-4">
-            <div className="mb-2">
-              <StatusChip tone="neutral">AI trade review</StatusChip>
-            </div>
-            <p className="text-[12.5px] leading-relaxed text-ink-soft">
-              Available once excursions are computed. The review explains your
-              numbers — it never invents them.
-            </p>
-          </SurfaceCard>
+          {env.DEEPSEEK_API_KEY &&
+          initialReview &&
+          !("needsData" in initialReview) ? (
+            <TradeReviewPanel
+              tradeId={trade.id}
+              initial={initialReview.review}
+              initialKind={initialReview.kind}
+            />
+          ) : env.DEEPSEEK_API_KEY ? null : (
+            <SurfaceCard className="mb-4 p-4">
+              <div className="mb-2">
+                <StatusChip tone="neutral">Trade review</StatusChip>
+              </div>
+              <p className="text-[12.5px] leading-relaxed text-ink-soft">
+                Plain-English analysis of each trade. Add a DeepSeek API key to
+                enable it.
+              </p>
+            </SurfaceCard>
+          )}
         </div>
       </div>
 
-      <div className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
-        Fills ({fills.length})
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
+          Fills ({fills.length})
+        </span>
+        {/* Say why times are missing rather than showing a fake midnight. */}
+        {fills.length > 0 && !hasTimeOfDay(fills[0].executedAt) && (
+          <span className="text-[11px] text-ink-faint">
+            · CSV exports don&apos;t include times
+          </span>
+        )}
       </div>
       <SurfaceCard className="mb-6 overflow-hidden">
         <div className="divide-y divide-line">
@@ -181,7 +254,7 @@ export default async function TradeDetailPage({
                 {f.code}
               </span>
               <span className="tnum flex-1 text-[12px] text-ink-faint">
-                {day(f.executedAt)}
+                {dateTimeLabel(f.executedAt)}
               </span>
               <span className="tnum w-12 text-right text-[12px] text-ink-soft">
                 {f.quantity}
@@ -215,7 +288,15 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
+function KV({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string | null;
+}) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
@@ -224,6 +305,7 @@ function KV({ label, value }: { label: string; value: string }) {
       <div className="tnum mt-0.5 text-[14px] font-semibold text-ink">
         {value}
       </div>
+      {sub && <div className="tnum text-[11px] text-ink-faint">{sub}</div>}
     </div>
   );
 }

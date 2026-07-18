@@ -8,6 +8,8 @@ import {
   positions,
 } from "@/lib/db/schema";
 import { getCreds, snaptrade } from "./client";
+import { mapActivitiesToFills } from "./activities";
+import { ingestBrokerageFills, runReconstruction } from "@/lib/import/pipeline";
 
 const n = (v: unknown): string | null =>
   v === null || v === undefined || Number.isNaN(Number(v)) ? null : String(v);
@@ -16,6 +18,12 @@ export interface SyncOutcome {
   connections: number;
   accounts: number;
   positions: number;
+  fillsInserted: number;
+  tradesUpserted: number;
+  /** Accounts whose transaction history the broker hasn't finished sending. */
+  accountsStillBackfilling: string[];
+  /** Per-account: does this broker actually supply execution times? */
+  timeGranularity: { account: string; hasExecutionTimes: boolean }[];
 }
 
 /**
@@ -90,7 +98,10 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
   ).data;
 
   let positionCount = 0;
+  let fillsInserted = 0;
   const liveAccountIds: string[] = [];
+  const backfilling: string[] = [];
+  const granularity: { account: string; hasExecutionTimes: boolean }[] = [];
 
   for (const acct of accounts) {
     if (!acct.id) continue;
@@ -136,6 +147,33 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
       creds,
       now,
     );
+
+    // Trade history only exists once the broker finishes its initial backfill.
+    // Say so rather than silently reporting zero trades.
+    if (!txSync?.initial_sync_completed) {
+      backfilling.push(acct.name ?? acct.id);
+      continue;
+    }
+
+    const res = await snaptrade.accountInformation.getAccountActivities({
+      userId: creds.userId,
+      userSecret: creds.userSecret,
+      accountId: acct.id,
+    });
+    const activities =
+      (res.data as { data?: unknown[] })?.data ??
+      (Array.isArray(res.data) ? (res.data as unknown[]) : []);
+
+    const mapped = mapActivitiesToFills(activities, saved.id);
+    granularity.push({
+      account: acct.name ?? acct.id,
+      hasExecutionTimes: mapped.hasExecutionTimes,
+    });
+
+    if (mapped.fills.length) {
+      const out = await ingestBrokerageFills(userId, saved.id, mapped.fills);
+      fillsInserted += out.inserted;
+    }
   }
 
   if (liveAccountIds.length) {
@@ -149,10 +187,18 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
       );
   }
 
+  // Rebuild once at the end — reconstruction reads every fill the user has, so
+  // running it per account would repeat the same work.
+  const recon = fillsInserted > 0 ? await runReconstruction(userId, "sync") : null;
+
   return {
     connections: auths.length,
     accounts: accounts.length,
     positions: positionCount,
+    fillsInserted,
+    tradesUpserted: recon?.tradesUpserted ?? 0,
+    accountsStillBackfilling: backfilling,
+    timeGranularity: granularity,
   };
 }
 

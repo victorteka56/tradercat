@@ -32,6 +32,9 @@ const schema = z.object({
     .string({ error: missing("SNAPTRADE_CONSUMER_KEY", "SnapTrade dashboard → API keys") })
     .min(1),
 
+  /** Optional — trade-review narration. Absent = the AI feature is simply off. */
+  DEEPSEEK_API_KEY: z.string().optional().default(""),
+
   /** 32 bytes, base64. Encrypts provider secrets at rest. */
   ENCRYPTION_KEY: z
     .string({
@@ -50,6 +53,7 @@ const parsed = schema.safeParse({
   DIRECT_URL: process.env.DIRECT_URL,
   SNAPTRADE_CLIENT_ID: process.env.SNAPTRADE_CLIENT_ID,
   SNAPTRADE_CONSUMER_KEY: process.env.SNAPTRADE_CONSUMER_KEY,
+  DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 });
 

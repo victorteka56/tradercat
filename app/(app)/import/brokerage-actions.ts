@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createConnectionPortalUrl } from "@/lib/snaptrade/client";
 import { disconnectBrokerage, syncBrokerageData } from "@/lib/snaptrade/sync";
+import { precomputeReviews } from "@/lib/ai/precompute";
 
 function originFromRequest(): string {
   const h = headers();
@@ -29,7 +30,16 @@ export async function connectBrokerage() {
 
 export async function syncBrokerage() {
   const user = await requireUser();
-  await syncBrokerageData(user.id);
+  const outcome = await syncBrokerageData(user.id);
+
+  // Precompute reviews for the trades this sync produced, in the background —
+  // fire-and-forget so the user's sync returns immediately and the reviews are
+  // ready by the time they open a trade. Detached on purpose; in production
+  // this moves to a queue.
+  if (outcome.fillsInserted > 0) {
+    void precomputeReviews(user.id).catch(() => {});
+  }
+
   revalidatePath("/import");
   revalidatePath("/portfolio");
   revalidatePath("/home");

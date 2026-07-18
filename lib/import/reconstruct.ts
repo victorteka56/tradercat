@@ -25,6 +25,19 @@ export interface ReconFill {
   price: number | null;
   amount: number;
   executedAt: Date;
+  /**
+   * Origin scope. Trades are grouped within a scope so the same contract held
+   * at two brokers stays two separate trades. `csv` for file imports,
+   * `acct:<id>` for a brokerage account.
+   */
+  scope?: string;
+  /**
+   * Structured option detail when the source provides it (brokerage feeds do).
+   * When present, reconstruction uses it instead of parsing the description.
+   */
+  optionType?: "call" | "put" | null;
+  strike?: number | null;
+  expiry?: Date | null;
 }
 
 export interface TradeLegDraft {
@@ -88,17 +101,35 @@ export function parseOptionDescription(desc: string): ParsedOption | null {
 
 const round = (n: number, dp = 8) => Number(n.toFixed(dp));
 
+/**
+ * Structured fields win over the description. Brokerage feeds give us the
+ * contract directly; only CSV imports need the text parsed.
+ */
+function optionOf(f: ReconFill): ParsedOption | null {
+  if (f.optionType && f.strike != null && f.expiry) {
+    return {
+      underlying: f.symbol,
+      optionType: f.optionType,
+      strike: f.strike,
+      expiry: f.expiry,
+    };
+  }
+  return parseOptionDescription(f.description);
+}
+
 export function reconstructTrades(fills: ReconFill[]): TradeDraft[] {
   const groups = new Map<string, ReconFill[]>();
 
   for (const f of fills) {
-    const opt = parseOptionDescription(f.description);
-    // Options key on the contract; stocks key on the instrument.
+    const opt = optionOf(f);
+    const scope = f.scope ?? "csv";
+    // Options key on the contract; stocks key on the instrument. Both are
+    // scoped by origin so two brokers never merge into one trade.
     const groupKey = opt
-      ? `opt:${f.symbol}:${opt.optionType}:${opt.strike}:${opt.expiry
+      ? `${scope}|opt:${f.symbol}:${opt.optionType}:${opt.strike}:${opt.expiry
           .toISOString()
           .slice(0, 10)}`
-      : `stk:${f.symbol}`;
+      : `${scope}|stk:${f.symbol}`;
     const list = groups.get(groupKey);
     if (list) list.push(f);
     else groups.set(groupKey, [f]);
@@ -109,7 +140,7 @@ export function reconstructTrades(fills: ReconFill[]): TradeDraft[] {
   for (const [groupKey, groupFills] of groups) {
     groupFills.sort((a, b) => a.executedAt.getTime() - b.executedAt.getTime());
 
-    const opt = parseOptionDescription(groupFills[0].description);
+    const opt = optionOf(groupFills[0]);
     const kind: "option" | "stock" | "other" = opt ? "option" : "stock";
 
     let openedQty = 0;
