@@ -10,6 +10,7 @@ import { ColumnChart } from "@/components/analytics/ColumnChart";
 import { BarBreakdown } from "@/components/analytics/BarBreakdown";
 import { DistributionCard } from "@/components/analytics/DistributionCard";
 import { ActivityChart } from "@/components/analytics/ActivityChart";
+import { TreemapChart } from "@/components/analytics/TreemapChart";
 import {
   computeAnalytics,
   type AnalyticsTrade,
@@ -47,12 +48,6 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
 
   const long = a?.byDirection.find((b) => b.key === "long");
   const short = a?.byDirection.find((b) => b.key === "short");
-
-  const symbolsRanked = useMemo(() => {
-    if (!a) return [];
-    const sorted = [...a.symbols].sort((x, y) => y.pnl - x.pnl);
-    return [...sorted.filter((b) => b.pnl > 0).slice(0, 5), ...sorted.filter((b) => b.pnl < 0).slice(-5)];
-  }, [a]);
 
   return (
     <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1000px] lg:pt-10">
@@ -154,7 +149,7 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
           </div>
 
           <div className="mb-4 grid gap-3 lg:grid-cols-2">
-            <ColumnChart
+            <BarBreakdown
               title="By day of week"
               question="When do you trade best?"
               buckets={a.byDayOfWeek}
@@ -172,11 +167,10 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
           </div>
 
           <div className="mb-4 grid gap-3 lg:grid-cols-2">
-            <BarBreakdown
+            <TreemapChart
               title="Symbols"
-              question="Where you make and lose the most."
-              buckets={symbolsRanked}
-              emptyLabel="Not enough per-symbol history yet."
+              question="Where you make and lose the most — tile size is P/L."
+              buckets={a.symbols}
             />
             <DistributionCard buckets={a.distribution} />
           </div>

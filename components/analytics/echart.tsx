@@ -37,6 +37,13 @@ export const hGrad = (color: string) =>
     { offset: 1, color },
   ]);
 
+/** Soft area fill (line charts) — tinted at the top, fading to nothing. */
+export const areaGrad = (color: string) =>
+  new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+    { offset: 0, color: color + "33" },
+    { offset: 1, color: color + "00" },
+  ]);
+
 export const tooltip = {
   trigger: "item" as const,
   backgroundColor: C.surface,
