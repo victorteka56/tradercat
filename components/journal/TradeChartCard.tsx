@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { TradeChart, type ChartCandle } from "./TradeChart";
 import type { JournalTrade } from "@/lib/queries/journal";
+import type { Interval } from "@/lib/market/provider";
 import { dateTimeLabel } from "@/lib/format";
 
 interface Props {
@@ -10,6 +11,9 @@ interface Props {
     candles: ChartCandle[];
     entryPrice: number | null;
     exitPrice: number | null;
+    interval: Interval;
+    fromMs: number;
+    toMs: number;
   } | null;
   marketDataConfigured: boolean;
 }
@@ -38,18 +42,15 @@ function plainSummary(t: JournalTrade, entry: number | null, exit: number | null
   const pctMove = Math.abs((moved / entry) * 100).toFixed(1);
 
   if (!isOption) {
-    return `You bought ${t.symbol} at about ${money(entry)} and sold at about ${money(exit)} — the share price went ${dir} ${pctMove}% while you held, so you ${won ? "made" : "lost"} money.`;
+    return `${t.symbol} went ${dir} ${pctMove}% (${money(entry)} → ${money(exit)}) while you held.`;
   }
 
   const helped =
     (t.optionType === "call" && moved > 0) || (t.optionType === "put" && moved < 0);
 
   return (
-    `You owned a ${t.symbol} ${t.optionType}, which is a bet on ${t.symbol}'s share price ` +
-    `${t.optionType === "call" ? "rising" : "falling"}. While you held it, ${t.symbol} went ${dir} ` +
-    `${pctMove}% — from about ${money(entry)} to ${money(exit)} a share. ` +
-    `That ${helped ? "moved in your favour" : "moved against you"}, which is why your contract went ` +
-    `from ${money(t.avgEntryPrice ?? 0)} to ${money(t.avgExitPrice ?? 0)}.`
+    `${t.symbol} went ${dir} ${pctMove}% (${money(entry)} → ${money(exit)}) — ` +
+    `${helped ? "in your favour" : "against you"} for a ${t.optionType}.`
   );
 }
 
@@ -103,6 +104,10 @@ export function TradeChartCard({ trade, data, marketDataConfigured }: Props) {
         exitPrice={data.exitPrice}
         direction={trade.direction}
         underlying={trade.symbol}
+        positive={trade.netPnl >= 0}
+        interval={data.interval}
+        fromMs={data.fromMs}
+        toMs={data.toMs}
       />
 
       <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3">

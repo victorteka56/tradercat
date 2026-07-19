@@ -31,6 +31,7 @@ export function JournalTradeRow({ trade }: { trade: JournalTrade }) {
           </span>
           <SourceBadge trade={trade} />
           {trade.status === "open" && <StatusChip tone="info">Open</StatusChip>}
+          {trade.incomplete && <StatusChip tone="neutral">Partial</StatusChip>}
         </div>
         <div className="tnum mt-0.5 truncate text-[11px] text-ink-soft">
           {tradeSubtitle(trade)}
@@ -47,12 +48,13 @@ export function JournalTradeRow({ trade }: { trade: JournalTrade }) {
       </div>
 
       <div className="text-right">
+        {/* Incomplete P/L is unreliable (no cost basis) — mute it, don't color it. */}
         <div
           className={`tnum text-[14px] font-semibold ${
-            up ? "text-pos" : "text-neg"
+            trade.incomplete ? "text-ink-faint" : up ? "text-pos" : "text-neg"
           }`}
         >
-          {usd(trade.netPnl, { sign: true })}
+          {trade.incomplete ? "—" : usd(trade.netPnl, { sign: true })}
         </div>
         {trade.rMultiple != null && (
           <div

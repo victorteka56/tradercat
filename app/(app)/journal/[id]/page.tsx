@@ -4,7 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { getTradeById, getTradeFills } from "@/lib/queries/journal";
+import { getTradeById, getTradeFills, getTradeNote } from "@/lib/queries/journal";
 import { tradeLabel, tradeSubtitle } from "@/lib/trade-display";
 import {
   usd,
@@ -17,9 +17,12 @@ import {
 import { SourceBadge } from "@/components/journal/SourceBadge";
 import { TradeChartCard } from "@/components/journal/TradeChartCard";
 import { ExcursionCard } from "@/components/journal/ExcursionCard";
+import { RunningPnlCard } from "@/components/journal/RunningPnlCard";
+import { TradeNotesCard } from "@/components/journal/TradeNotesCard";
 import { TradeReviewPanel } from "@/components/journal/TradeReviewPanel";
 import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
 import { computeExcursions } from "@/lib/analysis/excursions";
+import { computeRunningPnl } from "@/lib/analysis/running-pnl";
 import { getInitialReview } from "@/lib/ai/trade-review";
 
 export default async function TradeDetailPage({
@@ -31,7 +34,10 @@ export default async function TradeDetailPage({
   const trade = await getTradeById(user.id, params.id);
   if (!trade) notFound();
 
-  const fills = await getTradeFills(user.id, trade.id);
+  const [fills, note] = await Promise.all([
+    getTradeFills(user.id, trade.id),
+    getTradeNote(user.id, trade.id),
+  ]);
   const up = trade.netPnl >= 0;
 
   /**
@@ -55,9 +61,13 @@ export default async function TradeDetailPage({
           high: c.high,
           low: c.low,
           close: c.close,
+          volume: c.volume,
         })),
         entryPrice: chart.entryPrice,
         exitPrice: chart.exitPrice,
+        interval: chart.interval,
+        fromMs: chart.from.getTime(),
+        toMs: chart.to.getTime(),
       }
     : null;
 
@@ -76,12 +86,35 @@ export default async function TradeDetailPage({
         )
       : null;
 
+  // The trade's dollar P/L path over the hold — drawdown and run-up. Exact for
+  // stocks; an underlying-derived estimate for options (labelled as such).
+  const running =
+    chart && trade.entryAt && chart.entryPrice != null && chart.exitPrice != null
+      ? computeRunningPnl({
+          candles: chart.candles,
+          entryAt: trade.entryAt,
+          exitAt: trade.exitAt,
+          kind: trade.kind,
+          direction: trade.direction,
+          entryUnderlying: chart.entryPrice,
+          exitUnderlying: chart.exitPrice,
+          avgEntryPrice: trade.avgEntryPrice,
+          avgExitPrice: trade.avgExitPrice,
+          qty: Math.max(trade.openedQty, trade.closedQty),
+          realizedPnl: trade.netPnl,
+        })
+      : null;
+
   // Initial review state — no spend. Returns a cached AI review if one exists,
   // otherwise the computed floor, which the client upgrades in the background.
   const initialReview =
     Boolean(env.DEEPSEEK_API_KEY) && excursions
       ? await getInitialReview(user.id, trade.id).catch(() => null)
       : null;
+
+  const isOption = trade.kind === "option";
+  const size = Math.round(Math.max(trade.openedQty, trade.closedQty));
+  const money2 = (n: number | null) => (n == null ? "—" : `$${n.toFixed(2)}`);
 
   return (
     <main className="px-4 pt-14 lg:mx-auto lg:max-w-[900px] lg:pt-10">
@@ -127,74 +160,74 @@ export default async function TradeDetailPage({
         marketDataConfigured={marketDataConfigured}
       />
 
+      {running && <RunningPnlCard data={running} symbol={trade.symbol} />}
+
+      {/* Dense stats block — the hard numbers, no prose. */}
+      <SurfaceCard className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 p-4 sm:grid-cols-3 lg:grid-cols-4">
+        <Stat
+          label="Net ROI"
+          value={
+            trade.pnlPct == null
+              ? "—"
+              : `${trade.pnlPct >= 0 ? "+" : ""}${trade.pnlPct.toFixed(1)}%`
+          }
+          tone={trade.pnlPct == null ? undefined : trade.pnlPct >= 0 ? "pos" : "neg"}
+        />
+        <Stat
+          label="Gross P/L"
+          value={usd(trade.grossPnl ?? trade.netPnl, { sign: true })}
+        />
+        <Stat label="Fees" value={usd(trade.fees)} />
+        <Stat label="Cost basis" value={usd(trade.cost)} />
+        <Stat label="Proceeds" value={usd(trade.proceeds)} />
+        <Stat label="Side" value={trade.direction === "long" ? "Long" : "Short"} />
+        <Stat
+          label={isOption ? "Contracts" : "Shares"}
+          value={size > 0 ? size.toLocaleString() : "—"}
+        />
+        <Stat
+          label="R-multiple"
+          value={
+            trade.rMultiple != null && trade.riskSource
+              ? `${trade.rMultiple > 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R`
+              : "Not set"
+          }
+          tone={
+            trade.rMultiple != null && trade.riskSource
+              ? trade.rMultiple >= 0
+                ? "pos"
+                : "neg"
+              : undefined
+          }
+          muted={!(trade.rMultiple != null && trade.riskSource)}
+        />
+        <Stat label="Avg entry" value={money2(trade.avgEntryPrice)} />
+        <Stat label="Avg exit" value={money2(trade.avgExitPrice)} />
+        <Stat
+          label="Held"
+          value={
+            trade.holdingSeconds != null && hasTimeOfDay(trade.entryAt)
+              ? holdingLabel(trade.holdingSeconds)
+              : "—"
+          }
+        />
+        <Stat
+          label="Account"
+          value={trade.brokerName ?? "CSV import"}
+        />
+        <Stat
+          label="Opened"
+          value={dayLabel(trade.entryAt)}
+          sub={timeLabel(trade.entryAt)}
+        />
+        <Stat
+          label="Closed"
+          value={dayLabel(trade.exitAt)}
+          sub={timeLabel(trade.exitAt)}
+        />
+      </SurfaceCard>
+
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
-        <div>
-          <SurfaceCard className="mb-4 grid grid-cols-3 divide-x divide-line">
-            <Fact
-              label="Avg entry"
-              value={
-                trade.avgEntryPrice != null ? `$${trade.avgEntryPrice}` : "—"
-              }
-            />
-            <Fact
-              label="Avg exit"
-              value={trade.avgExitPrice != null ? `$${trade.avgExitPrice}` : "—"}
-            />
-            <Fact
-              label="Held"
-              value={
-                trade.holdingSeconds != null
-                  ? holdingLabel(trade.holdingSeconds)
-                  : "—"
-              }
-            />
-          </SurfaceCard>
-
-          <SurfaceCard className="mb-4 grid grid-cols-2 gap-y-3 p-4">
-            <KV label="Opened" value={String(trade.openedQty)} />
-            <KV label="Closed" value={String(trade.closedQty)} />
-            <KV label="Cost" value={usd(trade.cost)} />
-            <KV label="Proceeds" value={usd(trade.proceeds)} />
-            <KV
-              label="Opened"
-              value={dayLabel(trade.entryAt)}
-              sub={timeLabel(trade.entryAt)}
-            />
-            <KV
-              label="Closed"
-              value={dayLabel(trade.exitAt)}
-              sub={timeLabel(trade.exitAt)}
-            />
-          </SurfaceCard>
-
-          {/* R-multiple must never appear without a defined risk basis. */}
-          <SurfaceCard className="mb-4 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-semibold text-ink">
-                R-multiple
-              </span>
-              {trade.rMultiple != null && trade.riskSource ? (
-                <span
-                  className={`tnum text-[15px] font-semibold ${
-                    trade.rMultiple >= 0 ? "text-pos" : "text-neg"
-                  }`}
-                >
-                  {trade.rMultiple > 0 ? "+" : ""}
-                  {trade.rMultiple.toFixed(2)}R
-                </span>
-              ) : (
-                <StatusChip tone="neutral">Risk basis not set</StatusChip>
-              )}
-            </div>
-            {trade.rMultiple == null && (
-              <p className="mt-2 text-[12px] leading-relaxed text-ink-soft">
-                Your broker export doesn&apos;t include a stop, so initial risk
-                is unknown. Set a risk basis on the trade to get an R-multiple.
-              </p>
-            )}
-          </SurfaceCard>
-        </div>
-
         <div>
           {excursions ? (
             <ExcursionCard excursions={excursions} symbol={trade.symbol} />
@@ -212,7 +245,9 @@ export default async function TradeDetailPage({
               </p>
             </SurfaceCard>
           )}
+        </div>
 
+        <div>
           {env.DEEPSEEK_API_KEY &&
           initialReview &&
           !("needsData" in initialReview) ? (
@@ -234,6 +269,8 @@ export default async function TradeDetailPage({
           )}
         </div>
       </div>
+
+      <TradeNotesCard tradeId={trade.id} initial={note} />
 
       <div className="mb-2 flex items-center gap-2 px-1">
         <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
@@ -277,32 +314,35 @@ export default async function TradeDetailPage({
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="px-3 py-3 text-center">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-        {label}
-      </div>
-      <div className="tnum mt-1 text-[15px] font-semibold text-ink">{value}</div>
-    </div>
-  );
-}
-
-function KV({
+function Stat({
   label,
   value,
   sub,
+  tone,
+  muted,
 }: {
   label: string;
   value: string;
   sub?: string | null;
+  tone?: "pos" | "neg";
+  muted?: boolean;
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+      <div className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
         {label}
       </div>
-      <div className="tnum mt-0.5 text-[14px] font-semibold text-ink">
+      <div
+        className={`tnum mt-0.5 text-[14px] font-semibold ${
+          tone === "pos"
+            ? "text-pos"
+            : tone === "neg"
+            ? "text-neg"
+            : muted
+            ? "text-ink-faint"
+            : "text-ink"
+        }`}
+      >
         {value}
       </div>
       {sub && <div className="tnum text-[11px] text-ink-faint">{sub}</div>}

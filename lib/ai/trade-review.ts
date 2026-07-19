@@ -8,6 +8,7 @@ import { aiAnalyses } from "@/lib/db/schema";
 import { getTradeById } from "@/lib/queries/journal";
 import { getTradeChart } from "@/lib/market/candles";
 import { computeExcursions, type Excursions } from "@/lib/analysis/excursions";
+import { computeRunningPnl } from "@/lib/analysis/running-pnl";
 import { deepseekJson, extractJson } from "./deepseek";
 import { fallbackReview } from "./fallback-review";
 import { tradeLabel } from "@/lib/trade-display";
@@ -34,6 +35,24 @@ export interface ReviewResult {
   cached: boolean;
 }
 
+/** The trade's dollar P/L journey, summarized for the model. */
+export interface RunSummary {
+  /** best unrealized P/L reached */
+  peak: number;
+  /** worst unrealized P/L (deepest underwater; may be negative) */
+  worst: number;
+  /** largest peak→trough decline in dollars */
+  maxDrawdown: number;
+  /** dollars surrendered from the peak by exit */
+  giveback: number;
+  /** share of the hold spent in the red, 0–100 */
+  timeUnderwaterPct: number;
+  /** true if the high came before the exit (gains were then given back) */
+  peakBeforeExit: boolean;
+  /** true when the figures are an estimate (options) rather than exact (stocks) */
+  estimated: boolean;
+}
+
 /** Only the numbers the model is allowed to talk about. */
 interface ReviewInput {
   name: string;
@@ -45,6 +64,7 @@ interface ReviewInput {
   contractExit: number | null;
   holdingLabel: string;
   excursions: Excursions;
+  run: RunSummary | null;
 }
 
 const fmtHold = (seconds: number | null): string => {
@@ -68,7 +88,8 @@ Hard rules:
 - Write for a beginner. No jargon without a plain gloss. No emoji.
 - Be concise. Every sentence must earn its place. Prefer specifics over generalities.
 - The price excursions describe the UNDERLYING stock, not the option's value. Say "the stock" / "the share price", never imply it's the option's drawdown.
-- Nonjudgmental tone. Point out patterns as things to notice, not mistakes to scold.
+- The P/L-journey figures ARE the position's own dollar P/L over the hold. When they're marked estimated, say "about" or "roughly". Use them to notice patterns like sitting through a large drawdown before the trade worked, or giving back most of the gains before exiting — this is exactly the kind of thing worth reviewing.
+- Nonjudgmental tone. Point out patterns as things to notice, not mistakes to scold. "What could have gone better" is fair as a retrospective observation; never phrase it as advice for the future or a prediction.
 
 Return ONLY JSON in exactly this shape:
 {
@@ -115,8 +136,20 @@ ${
     : ""
 }
 - The stock ultimately moved ${e.directionCorrect ? "in the trade's favour" : "against the trade"}.
+${
+  i.run
+    ? `
+Your position's own P/L during the hold (${i.run.estimated ? "estimated from the stock's path" : "exact"}):
+- Best it was ever up: ${i.run.peak >= 0 ? "+" : ""}$${i.run.peak}
+- Worst it was ever down: ${i.run.worst >= 0 ? "+" : ""}$${i.run.worst}
+- Largest drawdown (peak to later low): $${i.run.maxDrawdown}
+- Gave back from the best point by the time you exited: $${i.run.giveback}
+- Spent about ${i.run.timeUnderwaterPct}% of the hold underwater (in the red)
+- The high point came ${i.run.peakBeforeExit ? "BEFORE you exited — gains were then given back" : "right at your exit"}`
+    : ""
+}
 
-Explain this trade to the trader using only these numbers.`;
+Explain this trade to the trader using only these numbers. If the P/L journey shows a large drawdown you sat through or a meaningful giveback before exit, make that one of your observations.`;
 }
 
 interface ReviewContext {
@@ -150,6 +183,31 @@ async function buildContext(
   );
   if (!excursions) return null;
 
+  const rp = computeRunningPnl({
+    candles: chart.candles,
+    entryAt: trade.entryAt,
+    exitAt: trade.exitAt,
+    kind: trade.kind,
+    direction: trade.direction,
+    entryUnderlying: chart.entryPrice,
+    exitUnderlying: chart.exitPrice,
+    avgEntryPrice: trade.avgEntryPrice,
+    avgExitPrice: trade.avgExitPrice,
+    qty: Math.max(trade.openedQty, trade.closedQty),
+    realizedPnl: trade.netPnl,
+  });
+  const run: RunSummary | null = rp
+    ? {
+        peak: Math.round(rp.peak.pnl),
+        worst: Math.round(rp.trough.pnl),
+        maxDrawdown: Math.round(rp.maxDrawdown),
+        giveback: Math.round(rp.giveback),
+        timeUnderwaterPct: rp.timeUnderwaterPct,
+        peakBeforeExit: rp.peakBeforeExit,
+        estimated: rp.estimated,
+      }
+    : null;
+
   const input: ReviewInput = {
     name: tradeLabel(trade),
     kind: trade.kind,
@@ -160,6 +218,7 @@ async function buildContext(
     contractExit: trade.avgExitPrice,
     holdingLabel: fmtHold(trade.holdingSeconds),
     excursions,
+    run,
   };
 
   return {
@@ -176,6 +235,7 @@ async function buildContext(
       trade.avgExitPrice,
       input.holdingLabel,
       excursions,
+      run,
     ),
   };
 }

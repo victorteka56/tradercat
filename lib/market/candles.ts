@@ -107,6 +107,9 @@ export async function getCandles(
 export interface TradeChartData {
   candles: Candle[];
   interval: Interval;
+  /** The padded window these candles span — lets the client refetch other intervals. */
+  from: Date;
+  to: Date;
   /** Underlying price at entry/exit — what the markers sit on. */
   entryPrice: number | null;
   exitPrice: number | null;
@@ -153,6 +156,8 @@ export async function getTradeChart(
   return {
     candles,
     interval,
+    from,
+    to,
     entryPrice: at(entryAt),
     exitPrice: exitAt ? at(exitAt) : null,
   };

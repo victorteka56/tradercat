@@ -3,17 +3,21 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { JournalTradeRow } from "@/components/journal/JournalTradeRow";
-import { EquityCurve } from "@/components/ui/EquityCurve";
+import { EquityPanel } from "@/components/journal/EquityPanel";
 import { requireUser } from "@/lib/auth";
-import { getEquityCurve, getJournalStats, getTrades } from "@/lib/queries/journal";
+import {
+  getJournalStats,
+  getRealizedSeries,
+  getTrades,
+} from "@/lib/queries/journal";
 import { usd } from "@/lib/format";
 
 export default async function HomePage() {
   const user = await requireUser();
-  const [stats, recent, curve] = await Promise.all([
+  const [stats, recent, series] = await Promise.all([
     getJournalStats(user.id),
     getTrades(user.id, { limit: 5 }),
-    getEquityCurve(user.id),
+    getRealizedSeries(user.id),
   ]);
 
   const name = user.displayName?.split(" ")[0] ?? "there";
@@ -55,39 +59,7 @@ export default async function HomePage() {
       ) : (
         <div className="lg:grid lg:grid-cols-3 lg:items-start lg:gap-5">
           <div className="space-y-4 lg:col-span-2">
-            <SurfaceCard className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
-                    Realized P/L
-                  </div>
-                  <div
-                    className={`tnum mt-1 text-[28px] font-semibold ${
-                      stats.netPnl >= 0 ? "text-pos" : "text-neg"
-                    }`}
-                  >
-                    {usd(stats.netPnl, { sign: true })}
-                  </div>
-                </div>
-                <StatusChip tone="neutral">
-                  {stats.totalTrades.toLocaleString()} trades
-                </StatusChip>
-              </div>
-              {curve.length > 1 && (
-                <div className="mt-3">
-                  <EquityCurve points={curve} height={160} />
-                </div>
-              )}
-              <div className="mt-2 flex justify-between text-[12px] text-ink-soft">
-                <span className="tnum">{stats.closedTrades} closed</span>
-                <span className="tnum">Win rate {stats.winRate}%</span>
-                <span className="tnum">
-                  {stats.profitFactor != null
-                    ? `Profit factor ${stats.profitFactor.toFixed(2)}`
-                    : "—"}
-                </span>
-              </div>
-            </SurfaceCard>
+            <EquityPanel series={series} title="Realized P/L" />
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MetricCard

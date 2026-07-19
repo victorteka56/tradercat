@@ -2,6 +2,7 @@ import {
   CLOSE_LONG,
   CLOSE_OTHER,
   CLOSE_SHORT,
+  isCorporateAction,
   OPEN_LONG,
   OPEN_SHORT,
 } from "./robinhood";
@@ -65,6 +66,8 @@ export interface TradeDraft {
   cost: number;
   proceeds: number;
   netPnl: number;
+  /** Missing opening fills → cost basis unknown → P/L unreliable. */
+  incomplete: boolean;
   entryAt: Date | null;
   exitAt: Date | null;
   holdingSeconds: number | null;
@@ -117,10 +120,18 @@ function optionOf(f: ReconFill): ParsedOption | null {
   return parseOptionDescription(f.description);
 }
 
-export function reconstructTrades(fills: ReconFill[]): TradeDraft[] {
+export function reconstructTrades(
+  fills: ReconFill[],
+  now: Date = new Date(0),
+): TradeDraft[] {
   const groups = new Map<string, ReconFill[]>();
 
   for (const f of fills) {
+    // Corporate actions (dividend reinvestment, splits) are not trades — a
+    // reinvested or spun-off share carries no discretionary cost basis, so
+    // including it would invent phantom P/L. Skip before grouping.
+    if (isCorporateAction(f.description)) continue;
+
     const opt = optionOf(f);
     const scope = f.scope ?? "csv";
     // Options key on the contract; stocks key on the instrument. Both are
@@ -205,11 +216,30 @@ export function reconstructTrades(fills: ReconFill[]): TradeDraft[] {
     }
 
     const direction: "long" | "short" = openShort > openLong ? "short" : "long";
-    // Closed once everything opened has been closed out. Fills that only close
-    // a position opened before the export window leave openedQty at 0 — we
-    // can't see the open, so we don't claim it's closed.
-    const status: "open" | "closed" =
-      openedQty > 0 && closedQty + 1e-8 >= openedQty ? "closed" : "open";
+
+    // Open only if net exposure remains — i.e. more was opened than closed.
+    // A position with only closing fills (opened before the feed's history
+    // window, so the buy isn't in it) has openedQty 0 and is NOT open: it's been
+    // sold, nothing is held.
+    const netOpen = openedQty - closedQty;
+    let status: "open" | "closed" = netOpen > 1e-8 ? "open" : "closed";
+
+    // An option past its expiry can't still be open, even if we never received
+    // an expiration event. Treat it as closed on the expiry date — the premium
+    // paid is a known loss, so its P/L stays valid.
+    if (status === "open" && opt && opt.expiry.getTime() < now.getTime()) {
+      status = "closed";
+      if (!exitAt) exitAt = opt.expiry;
+    }
+
+    // Cost basis is missing whenever we closed more than we opened — either no
+    // opening fill at all (bought before the feed's window) or only a fraction
+    // of the closed quantity was bought in-feed (the rest arrived via
+    // reinvestment, transfer, or a pre-window buy). Either way the realized P/L
+    // is unreliable, so it stays out of every total and ranking. (Options that
+    // expired above still hold their opening fills, so they're complete.)
+    const hasExit = legs.some((l) => l.legType === "exit");
+    const incomplete = hasExit && closedQty > openedQty + 1e-6;
 
     const holdingSeconds =
       entryAt && exitAt && status === "closed"
@@ -233,6 +263,7 @@ export function reconstructTrades(fills: ReconFill[]): TradeDraft[] {
       cost: round(cost, 2),
       proceeds: round(proceeds, 2),
       netPnl: round(netPnl, 2),
+      incomplete,
       entryAt,
       exitAt: status === "closed" ? exitAt : null,
       holdingSeconds,

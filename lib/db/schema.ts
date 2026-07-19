@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -246,6 +247,8 @@ export const profiles = pgTable("profiles", {
   displayName: text("display_name"),
   traderStyle: text("trader_style"),
   timezone: text("timezone").notNull().default("America/New_York"),
+  /** Journal layout preference: "table" or "calendar". */
+  journalView: text("journal_view").notNull().default("table"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -405,6 +408,14 @@ export const trades = pgTable(
     optionType: optionTypeEnum("option_type"),
     strike: numeric("strike", { precision: 20, scale: 8 }),
     expiry: timestamp("expiry", { withTimezone: true }),
+
+    /**
+     * True when the trade is missing its opening fills — the position was opened
+     * before the broker feed's history window, so we see only the closing side.
+     * Cost basis is unknown, so its P/L is not reliable and it's excluded from
+     * totals. Kept and shown (flagged) rather than dropped.
+     */
+    incomplete: boolean("incomplete").notNull().default(false),
 
     openedQty: numeric("opened_qty", { precision: 20, scale: 8 }).notNull().default("0"),
     closedQty: numeric("closed_qty", { precision: 20, scale: 8 }).notNull().default("0"),

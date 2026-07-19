@@ -118,6 +118,20 @@ export const POSITION_CODES = new Set([
   ...CLOSE_OTHER,
 ]);
 
+/**
+ * Descriptions that mark an automated corporate action rather than a
+ * discretionary trade. Robinhood books dividend reinvestments under a "Buy"
+ * code, and splits/spin-offs as position rows too — folding them into trades
+ * invents phantom cost basis (a reinvested share sold later shows a near-
+ * infinite return). We treat them as account activity, never as trades.
+ */
+const CORP_ACTION_RE =
+  /dividend reinvest|reinvestment|\bstock split\b|\breverse split\b|\bspin-?off\b/i;
+
+export function isCorporateAction(description: string): boolean {
+  return CORP_ACTION_RE.test(description);
+}
+
 const DIVIDEND_CODES = new Set(["CDIV", "MDIV"]);
 const INTEREST_CODES = new Set(["DCF", "INT", "MINT", "GOLD"]);
 const TRANSFER_CODES = new Set(["ACH", "ACATI"]);
@@ -184,6 +198,14 @@ export function parseRobinhoodActivity(text: string): ParseResult {
     if (executedAt) {
       if (!dateFrom || executedAt < dateFrom) dateFrom = executedAt;
       if (!dateTo || executedAt > dateTo) dateTo = executedAt;
+    }
+
+    // Corporate actions (dividend reinvestment, splits) are booked under a
+    // position code like "Buy" but are not discretionary trades — route them to
+    // activity so they never form a trade with phantom cost basis.
+    if (isCorporateAction((row[iDesc] || "").trim())) {
+      activity.other += amount;
+      continue;
     }
 
     // Non-position rows: aggregate for context, never as trading P/L.
