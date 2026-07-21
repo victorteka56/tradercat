@@ -4,6 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
 import { EChart, C, hGrad, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /**
  * Two-sided P/L: Long and Short as diverging bars from a centre line — losses
@@ -14,11 +15,13 @@ export function DivergingBar({
   question,
   left,
   right,
+  href,
 }: {
   title: string;
   question?: string;
   left?: Bucket;
   right?: Bucket;
+  href?: string;
 }) {
   // Rows bottom→top on the category axis, so Long sits on top.
   const rows: { label: string; b?: Bucket }[] = [
@@ -88,8 +91,7 @@ export function DivergingBar({
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
-      {question && <div className="mt-0.5 text-[11.5px] text-ink-faint">{question}</div>}
+      <CardHead title={title} question={question} href={href} />
 
       <div className="mt-3 flex items-end justify-between">
         <Side bucket={left} fallback="Long" align="left" />

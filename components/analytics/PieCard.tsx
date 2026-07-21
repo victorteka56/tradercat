@@ -4,6 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
 import { EChart, C, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /**
  * Composition donut — sized by trade count, coloured by each category's P/L, so
@@ -13,10 +14,12 @@ export function PieCard({
   title,
   question,
   buckets,
+  href,
 }: {
   title: string;
   question?: string;
   buckets: Bucket[];
+  href?: string;
 }) {
   const total = buckets.reduce((s, b) => s + b.trades, 0);
 
@@ -60,8 +63,7 @@ export function PieCard({
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
-      {question && <div className="mt-0.5 text-[11.5px] text-ink-faint">{question}</div>}
+      <CardHead title={title} question={question} href={href} />
 
       {total === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">Not enough data yet.</div>

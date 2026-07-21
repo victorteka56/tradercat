@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EquityPanel } from "@/components/journal/EquityPanel";
-import { PieCard } from "@/components/analytics/PieCard";
-import { DivergingBar } from "@/components/analytics/DivergingBar";
-import { ColumnChart } from "@/components/analytics/ColumnChart";
-import { BarBreakdown } from "@/components/analytics/BarBreakdown";
-import { DistributionCard } from "@/components/analytics/DistributionCard";
-import { ActivityChart } from "@/components/analytics/ActivityChart";
-import { TreemapChart } from "@/components/analytics/TreemapChart";
 import { KeyFindings } from "@/components/analytics/KeyFindings";
+import {
+  PieCard,
+  DivergingBar,
+  ColumnChart,
+  BarBreakdown,
+  DistributionCard,
+  ActivityChart,
+  TreemapChart,
+} from "@/components/analytics/lazy-charts";
 import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics";
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd } from "@/lib/format";
@@ -116,12 +118,14 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
               title="Options vs stocks"
               question="Which instrument makes you money?"
               buckets={a.byType}
+              href="/analytics/type"
             />
             <DivergingBar
               title="Long vs short"
               question="Bullish bets (longs & calls) vs bearish (shorts & puts)."
               left={long}
               right={short}
+              href="/analytics/direction"
             />
           </div>
 
@@ -130,17 +134,19 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
               title="By day of week"
               question="When do you trade best?"
               buckets={a.byDayOfWeek}
+              href="/analytics/days"
             />
             <ColumnChart
               title="By hold length"
               question="Do longer holds pay off?"
               buckets={a.byHold}
               emptyLabel="Needs execution times — connect your brokerage."
+              href="/analytics/hold"
             />
           </div>
 
           <div className="mb-4">
-            <ActivityChart monthly={a.monthly} />
+            <ActivityChart monthly={a.monthly} href="/analytics/activity" />
           </div>
 
           <div className="mb-4 grid gap-3 lg:grid-cols-2">
@@ -148,6 +154,7 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
               title="Symbols"
               question="Where you make and lose the most — tile size is P/L."
               buckets={a.symbols}
+              href="/analytics/symbols"
             />
             <DistributionCard buckets={a.distribution} />
           </div>

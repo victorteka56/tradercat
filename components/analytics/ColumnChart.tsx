@@ -4,6 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
 import { EChart, C, vGrad, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /** Diverging column chart — P/L per bucket, green up / red down from zero. */
 export function ColumnChart({
@@ -11,11 +12,13 @@ export function ColumnChart({
   question,
   buckets,
   emptyLabel = "Not enough data yet.",
+  href,
 }: {
   title: string;
   question?: string;
   buckets: Bucket[];
   emptyLabel?: string;
+  href?: string;
 }) {
   const option = {
     grid: { left: 2, right: 6, top: 12, bottom: 2, containLabel: true },
@@ -73,8 +76,7 @@ export function ColumnChart({
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
-      {question && <div className="mt-0.5 text-[11.5px] text-ink-faint">{question}</div>}
+      <CardHead title={title} question={question} href={href} />
       {buckets.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">{emptyLabel}</div>
       ) : (

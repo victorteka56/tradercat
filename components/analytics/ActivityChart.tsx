@@ -4,13 +4,14 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
 import { EChart, C, areaGrad, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /**
  * Trade activity over time — a line of trades per month, each point coloured by
  * whether that month was green or red. Surfaces overtrading and whether busier
  * months actually pay.
  */
-export function ActivityChart({ monthly }: { monthly: Bucket[] }) {
+export function ActivityChart({ monthly, href }: { monthly: Bucket[]; href?: string }) {
   const option = {
     grid: { left: 2, right: 10, top: 16, bottom: 2, containLabel: true },
     tooltip: {
@@ -58,10 +59,11 @@ export function ActivityChart({ monthly }: { monthly: Bucket[] }) {
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">Trade activity</div>
-      <div className="mt-0.5 text-[11.5px] text-ink-faint">
-        Trades per month — each point&apos;s colour is that month&apos;s P/L.
-      </div>
+      <CardHead
+        title="Trade activity"
+        question="Trades per month — each point's colour is that month's P/L."
+        href={href}
+      />
       {monthly.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">No dated trades yet.</div>
       ) : (

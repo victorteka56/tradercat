@@ -4,6 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd, usdCompact } from "@/lib/format";
 import { EChart, C, hGrad, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /** Ranked horizontal P/L bars — labels on the axis, values at the bar ends. */
 export function BarBreakdown({
@@ -11,11 +12,13 @@ export function BarBreakdown({
   question,
   buckets,
   emptyLabel = "Not enough data yet.",
+  href,
 }: {
   title: string;
   question?: string;
   buckets: Bucket[];
   emptyLabel?: string;
+  href?: string;
 }) {
   // Category axis renders bottom→top, so reverse to read top-down.
   const rows = [...buckets].reverse();
@@ -84,8 +87,7 @@ export function BarBreakdown({
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
-      {question && <div className="mt-0.5 text-[11.5px] text-ink-faint">{question}</div>}
+      <CardHead title={title} question={question} href={href} />
       {buckets.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">{emptyLabel}</div>
       ) : (

@@ -4,6 +4,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd, usdCompact } from "@/lib/format";
 import { EChart, C, tooltip } from "./echart";
+import { CardHead } from "./CardHead";
 
 /**
  * Symbols as a treemap — each tile sized by how much P/L it moved and coloured
@@ -14,10 +15,12 @@ export function TreemapChart({
   title,
   question,
   buckets,
+  href,
 }: {
   title: string;
   question?: string;
   buckets: Bucket[];
+  href?: string;
 }) {
   const data = [...buckets]
     .filter((b) => Math.abs(b.pnl) > 0)
@@ -70,8 +73,7 @@ export function TreemapChart({
 
   return (
     <SurfaceCard className="p-4">
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
-      {question && <div className="mt-0.5 text-[11.5px] text-ink-faint">{question}</div>}
+      <CardHead title={title} question={question} href={href} />
       {data.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">Not enough per-symbol history yet.</div>
       ) : (
