@@ -20,14 +20,14 @@ export function MetricCard({
       ? "text-info"
       : "text-ink";
   return (
-    <SurfaceCard className="p-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+    <SurfaceCard className="p-4 lg:p-[18px]">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
         {label}
       </div>
-      <div className={`tnum mt-1.5 text-[22px] font-semibold ${toneClass}`}>
+      <div className={`tnum mt-2 text-[23px] font-bold leading-none tracking-[-0.01em] ${toneClass}`}>
         {value}
       </div>
-      {sub && <div className="tnum mt-0.5 text-[12px] text-ink-soft">{sub}</div>}
+      {sub && <div className="tnum mt-1.5 text-[12px] font-medium text-ink-soft">{sub}</div>}
     </SurfaceCard>
   );
 }
