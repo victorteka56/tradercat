@@ -33,8 +33,9 @@ export function TreemapChart({
   const option = {
     tooltip: {
       ...tooltip,
-      formatter: (p: { data: { b: Bucket } }) => {
-        const b = p.data.b;
+      formatter: (p: { data?: { b?: Bucket } }) => {
+        const b = p.data?.b;
+        if (!b) return "";
         const col = b.pnl >= 0 ? C.pos : C.neg;
         return `<div style="font-weight:700">${b.label}</div>
           <div style="color:${C.inkSoft}">${b.trades} trades · ${b.winRate}% win</div>

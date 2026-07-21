@@ -188,18 +188,60 @@ function fmtHold(days: number | null): string {
   return `${Math.round(days)}d`;
 }
 
-function InsightRow({ insight }: { insight: Insight }) {
-  const dot =
-    insight.tone === "pos" ? "bg-pos" : insight.tone === "neg" ? "bg-neg" : "bg-info";
+const TONE = {
+  pos: { card: "border-pos/20 bg-pos/[0.05]", chip: "bg-pos/12 text-pos" },
+  neg: { card: "border-neg/20 bg-neg/[0.05]", chip: "bg-neg/12 text-neg" },
+  neutral: { card: "border-info/20 bg-info/[0.05]", chip: "bg-info/12 text-info" },
+} as const;
+
+function ToneIcon({ tone }: { tone: Insight["tone"] }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2.2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  if (tone === "pos")
+    return (
+      <svg {...common}>
+        <path d="M3 17l6-6 4 4 8-8" />
+        <path d="M17 7h4v4" />
+      </svg>
+    );
+  if (tone === "neg")
+    return (
+      <svg {...common}>
+        <path d="M3 7l6 6 4-4 8 8" />
+        <path d="M17 17h4v-4" />
+      </svg>
+    );
   return (
-    <SurfaceCard className="flex gap-3 p-3.5">
-      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
-      <div>
-        <div className="text-[13.5px] font-semibold text-ink">{insight.title}</div>
+    <svg {...common}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8h.01M11 12h1v4h1" />
+    </svg>
+  );
+}
+
+function InsightRow({ insight }: { insight: Insight }) {
+  const t = TONE[insight.tone];
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl border p-4 ${t.card}`}>
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${t.chip}`}
+      >
+        <ToneIcon tone={insight.tone} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[14px] font-semibold text-ink">{insight.title}</div>
         <div className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">
           {insight.detail}
         </div>
       </div>
-    </SurfaceCard>
+    </div>
   );
 }
