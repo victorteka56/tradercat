@@ -11,11 +11,8 @@ import { BarBreakdown } from "@/components/analytics/BarBreakdown";
 import { DistributionCard } from "@/components/analytics/DistributionCard";
 import { ActivityChart } from "@/components/analytics/ActivityChart";
 import { TreemapChart } from "@/components/analytics/TreemapChart";
-import {
-  computeAnalytics,
-  type AnalyticsTrade,
-  type Insight,
-} from "@/lib/analysis/analytics";
+import { KeyFindings } from "@/components/analytics/KeyFindings";
+import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics";
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd } from "@/lib/format";
 
@@ -81,14 +78,6 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
         </SurfaceCard>
       ) : (
         <>
-          {a.insights.length > 0 && (
-            <div className="mb-4 space-y-2.5">
-              {a.insights.map((ins, i) => (
-                <InsightRow key={i} insight={ins} />
-              ))}
-            </div>
-          )}
-
           {/* Deeper than the Home summary — risk, reward quality, behaviour. */}
           <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricCard
@@ -119,20 +108,8 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
             <EquityPanel series={series} title="Equity" controlledRange={range} />
           </div>
 
-          {/* Behaviour — the part Home doesn't tell you. */}
-          {a.behavior.length > 0 && (
-            <div className="mb-4">
-              <div className="mb-2 flex items-center gap-2 px-1">
-                <h2 className="text-[14px] font-semibold text-ink">Your behaviour</h2>
-                <span className="text-[11.5px] text-ink-faint">patterns in how you trade</span>
-              </div>
-              <div className="space-y-2.5">
-                {a.behavior.map((ins, i) => (
-                  <InsightRow key={i} insight={ins} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Behaviour — bespoke graphics, the part Home doesn't tell you. */}
+          <KeyFindings a={a} />
 
           <div className="mb-4 grid gap-3 lg:grid-cols-2">
             <PieCard
@@ -186,62 +163,4 @@ function fmtHold(days: number | null): string {
   if (days < 1) return "<1d";
   if (days < 10) return `${days.toFixed(1)}d`;
   return `${Math.round(days)}d`;
-}
-
-const TONE = {
-  pos: { card: "border-pos/20 bg-pos/[0.05]", chip: "bg-pos/12 text-pos" },
-  neg: { card: "border-neg/20 bg-neg/[0.05]", chip: "bg-neg/12 text-neg" },
-  neutral: { card: "border-info/20 bg-info/[0.05]", chip: "bg-info/12 text-info" },
-} as const;
-
-function ToneIcon({ tone }: { tone: Insight["tone"] }) {
-  const common = {
-    width: 16,
-    height: 16,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2.2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (tone === "pos")
-    return (
-      <svg {...common}>
-        <path d="M3 17l6-6 4 4 8-8" />
-        <path d="M17 7h4v4" />
-      </svg>
-    );
-  if (tone === "neg")
-    return (
-      <svg {...common}>
-        <path d="M3 7l6 6 4-4 8 8" />
-        <path d="M17 17h4v-4" />
-      </svg>
-    );
-  return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8h.01M11 12h1v4h1" />
-    </svg>
-  );
-}
-
-function InsightRow({ insight }: { insight: Insight }) {
-  const t = TONE[insight.tone];
-  return (
-    <div className={`flex items-start gap-3 rounded-2xl border p-4 ${t.card}`}>
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${t.chip}`}
-      >
-        <ToneIcon tone={insight.tone} />
-      </span>
-      <div className="min-w-0">
-        <div className="text-[14px] font-semibold text-ink">{insight.title}</div>
-        <div className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">
-          {insight.detail}
-        </div>
-      </div>
-    </div>
-  );
 }

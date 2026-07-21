@@ -77,10 +77,30 @@ export interface AnalyticsSummary {
   worstTradePnl: number;
 }
 
+export interface StreakStat {
+  count: number;
+  winRate: number;
+  avgPnl: number;
+}
+
+/** Raw behavioural numbers — the visual "key findings" cards render from these. */
+export interface BehaviorMetrics {
+  avgWin: number;
+  avgLoss: number;
+  payoffRatio: number | null;
+  avgHoldWinDays: number | null;
+  avgHoldLossDays: number | null;
+  afterLoss: StreakStat | null;
+  afterWin: StreakStat | null;
+  topProfitShare: number | null;
+  worstLossShare: number | null;
+}
+
 export interface Analytics {
   summary: AnalyticsSummary;
   /** Behavioural findings — the "why", not just the "what". */
   behavior: Insight[];
+  behaviorMetrics: BehaviorMetrics;
   /** Per-month trade count + P/L, oldest first. */
   monthly: Bucket[];
   insights: Insight[];
@@ -340,6 +360,17 @@ export function computeAnalytics(trades: AnalyticsTrade[]): Analytics | null {
     summary,
     insights: buildInsights(summary, { byType, byDirection, byDayOfWeek, byHold }),
     behavior,
+    behaviorMetrics: {
+      avgWin,
+      avgLoss,
+      payoffRatio: summary.payoffRatio,
+      avgHoldWinDays: avgHoldWin,
+      avgHoldLossDays: avgHoldLoss,
+      afterLoss,
+      afterWin,
+      topProfitShare,
+      worstLossShare,
+    },
     monthly,
     byType,
     byDirection,
