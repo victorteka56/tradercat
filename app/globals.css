@@ -78,3 +78,55 @@ body {
     animation: none;
   }
 }
+
+/* ---- Futuristic AI glow (trade-analysis launcher + drawer header) ---- */
+
+.tc-ai-card {
+  box-shadow:
+    0 8px 30px -10px rgba(124, 58, 237, 0.5),
+    0 2px 10px -3px rgba(124, 58, 237, 0.35);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.tc-ai-card:hover {
+  box-shadow:
+    0 16px 50px -10px rgba(124, 58, 237, 0.7),
+    0 4px 14px -3px rgba(124, 58, 237, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Slow breathing glow for the radial blobs behind the card. */
+@keyframes tc-ai-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+.tc-ai-glow {
+  animation: tc-ai-glow 3.6s ease-in-out infinite;
+}
+
+/* A light sheen that sweeps across, so the surface feels alive. */
+@keyframes tc-ai-sheen {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  60%,
+  100% {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+.tc-ai-sheen {
+  animation: tc-ai-sheen 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-ai-glow,
+  .tc-ai-sheen {
+    animation: none;
+  }
+}

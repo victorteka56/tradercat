@@ -100,29 +100,69 @@ export function TradeAnalysisDrawer({
 
   return (
     <>
-      {/* Inline launcher — a teaser that opens the panel */}
+      {/* Inline launcher — a futuristic, glowing teaser that opens the panel */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`group mb-4 flex w-full items-center gap-3 rounded-card border bg-surface p-3.5 text-left shadow-card transition-all hover:shadow-card-hover ${accent(
-          v.tone,
-        )}`}
+        className="tc-ai-card group relative mb-4 flex w-full items-center gap-3.5 overflow-hidden rounded-2xl p-4 text-left"
       >
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${chipTone(v.tone)}`}>
+        {/* Base violet gradient */}
+        <span
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(125deg, #1a1140 0%, #271759 45%, #3a1d78 100%)" }}
+        />
+        {/* Breathing glow blobs */}
+        <span
+          aria-hidden
+          className="tc-ai-glow pointer-events-none absolute -left-12 -top-16 h-40 w-40 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(167,139,250,0.55), transparent 68%)" }}
+        />
+        <span
+          aria-hidden
+          className="tc-ai-glow pointer-events-none absolute -bottom-16 -right-10 h-44 w-44 rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(124,58,237,0.5), transparent 68%)",
+            animationDelay: "1.3s",
+          }}
+        />
+        {/* Sweeping sheen */}
+        <span
+          aria-hidden
+          className="tc-ai-sheen pointer-events-none absolute inset-y-0 left-0 w-1/4"
+          style={{ background: "linear-gradient(100deg, transparent, rgba(255,255,255,0.16), transparent)" }}
+        />
+        {/* Inner hairline ring */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-2xl"
+          style={{ boxShadow: "inset 0 0 0 1px rgba(196,181,253,0.25)" }}
+        />
+
+        {/* Glowing AI orb */}
+        <span
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
+          style={{
+            background: "linear-gradient(150deg, #a78bfa, #7c3aed)",
+            boxShadow: "0 0 18px rgba(167,139,250,0.65)",
+          }}
+        >
           <SparkIcon />
         </span>
-        <span className="min-w-0 flex-1">
+
+        <span className="relative min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold text-ink">AI trade analysis</span>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chipTone(v.tone)}`}>
+            <span className="text-[13px] font-semibold text-white">AI trade analysis</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${glowChip(v.tone)}`}>
               {v.label}
             </span>
           </span>
-          <span className="mt-0.5 block truncate text-[12px] text-ink-soft">
+          <span className="mt-0.5 block truncate text-[12px] text-[#e9e3ff]/75">
             {review.headline}
           </span>
         </span>
-        <span className="flex items-center gap-1 text-[12px] font-semibold text-info">
+
+        <span className="relative flex items-center gap-1 text-[12px] font-semibold text-white/90">
           View
           <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 6l6 6-6 6" />
@@ -145,27 +185,45 @@ export function TradeAnalysisDrawer({
               shown ? "translate-x-0" : "translate-x-full"
             }`}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-line bg-surface px-5 py-3.5">
-              <div className="flex items-center gap-2">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-full ${chipTone(v.tone)}`}>
+            {/* Header — the futuristic accent carries over from the launcher */}
+            <div
+              className="relative flex items-center justify-between overflow-hidden px-5 py-3.5"
+              style={{ background: "linear-gradient(120deg, #1a1140 0%, #2a1a63 100%)" }}
+            >
+              <span
+                aria-hidden
+                className="tc-ai-glow pointer-events-none absolute -left-8 -top-12 h-28 w-28 rounded-full"
+                style={{ background: "radial-gradient(circle, rgba(167,139,250,0.5), transparent 70%)" }}
+              />
+              <div className="relative flex items-center gap-2.5">
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
+                  style={{
+                    background: "linear-gradient(150deg, #a78bfa, #7c3aed)",
+                    boxShadow: "0 0 16px rgba(167,139,250,0.6)",
+                  }}
+                >
                   <SparkIcon small />
                 </span>
                 <div>
-                  <div className="text-[14px] font-semibold leading-none text-ink">
+                  <div className="text-[14px] font-semibold leading-none text-white">
                     Trade analysis
                   </div>
-                  <div className="mt-1 text-[11px] leading-none text-ink-faint">
+                  <div className="mt-1 text-[11px] leading-none text-[#c4b5fd]">
                     {trade.symbol} · AI review
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="relative flex items-center gap-2">
                 {upgrading && (
-                  <span className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                  <span className="flex items-center gap-1.5 text-[11px] text-[#c4b5fd]">
                     <span className="flex items-end gap-[3px]">
                       {[0, 1, 2].map((i) => (
-                        <span key={i} className="tc-dot h-1 w-1 rounded-full bg-info" style={{ animationDelay: `${i * 0.15}s` }} />
+                        <span
+                          key={i}
+                          className="tc-dot h-1 w-1 rounded-full"
+                          style={{ animationDelay: `${i * 0.15}s`, background: "#c4b5fd" }}
+                        />
                       ))}
                     </span>
                     Refining…
@@ -174,7 +232,7 @@ export function TradeAnalysisDrawer({
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M6 6l12 12M18 6L6 18" />
@@ -351,6 +409,20 @@ function chipTone(tone: Tone): string {
       return "bg-amber/10 text-amber";
     default:
       return "bg-surface-2 text-ink-soft";
+  }
+}
+
+/** Verdict chip tuned for legibility on the dark violet launcher/header. */
+function glowChip(tone: Tone): string {
+  switch (tone) {
+    case "pos":
+      return "bg-[#22c55e]/20 text-[#86efac]";
+    case "neg":
+      return "bg-[#f87171]/20 text-[#fca5a5]";
+    case "amber":
+      return "bg-[#f59e0b]/20 text-[#fcd34d]";
+    default:
+      return "bg-white/15 text-[#e9e3ff]";
   }
 }
 

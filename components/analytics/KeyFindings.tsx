@@ -13,7 +13,12 @@ const fmtDays = (d: number) => (d < 1 ? "<1d" : d < 10 ? `${d.toFixed(1)}d` : `$
 const usd0 = (n: number) =>
   `${n < 0 ? "-" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
 
-export function KeyFindings({ a }: { a: Analytics }) {
+/**
+ * Behavioural findings as standalone cards. Returned as a plain array so the
+ * page can pack them into the same mosaic as the breakdown charts — a separate
+ * grid of its own would strand a shorter card and leave a gap beside it.
+ */
+export function keyFindingsCards(a: Analytics): React.ReactNode[] {
   const m = a.behaviorMetrics;
   const cards: React.ReactNode[] = [];
 
@@ -107,17 +112,7 @@ export function KeyFindings({ a }: { a: Analytics }) {
     );
   }
 
-  if (cards.length === 0) return null;
-
-  return (
-    <div className="mb-4">
-      <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="text-[14px] font-semibold text-ink">Key findings</h2>
-        <span className="text-[11.5px] text-ink-faint">how you actually trade</span>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">{cards}</div>
-    </div>
-  );
+  return cards;
 }
 
 function Card({

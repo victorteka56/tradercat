@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { aiAnalyses } from "@/lib/db/schema";
-import { getTradeById } from "@/lib/queries/journal";
+import { getTradeById, getTradeFills, type TradeFill } from "@/lib/queries/journal";
 import { getTradeChart } from "@/lib/market/candles";
 import { computeExcursions, type Excursions } from "@/lib/analysis/excursions";
 import { computeRunningPnl } from "@/lib/analysis/running-pnl";
@@ -53,6 +53,87 @@ export interface RunSummary {
   estimated: boolean;
 }
 
+/** One priced leg of the position — a single buy or sell. */
+export interface FillLeg {
+  qty: number;
+  price: number | null;
+}
+
+/** How the position was built and unwound — the execution story. */
+export interface FillsSummary {
+  entries: FillLeg[];
+  exits: FillLeg[];
+  /** more than one opening fill */
+  scaledIn: boolean;
+  /** more than one closing fill */
+  scaledOut: boolean;
+  /** added to the position at a worse price than the first entry (long: lower; short: higher) */
+  averagedDown: boolean;
+  /** how much worse the worst add was vs the first entry, in %, when averaged down */
+  addWorsePct: number | null;
+}
+
+/**
+ * Reduces the raw fills to the execution story: how many entries/exits, whether
+ * the trader scaled in or out, and — the one that usually matters — whether they
+ * added to a position that was already moving against them (averaging down).
+ */
+function summarizeFills(
+  fills: TradeFill[],
+  direction: "long" | "short",
+): FillsSummary | null {
+  if (fills.length === 0) return null;
+
+  const ordered = [...fills].sort(
+    (a, b) => a.executedAt.getTime() - b.executedAt.getTime(),
+  );
+
+  const classify = (code: string): "entry" | "exit" | "other" => {
+    const c = code.toUpperCase();
+    if (c === "BTO" || c === "STO") return "entry";
+    if (c === "STC" || c === "BTC" || c === "OEXP" || c === "OASGN") return "exit";
+    if (c === "BUY") return direction === "long" ? "entry" : "exit";
+    if (c === "SELL") return direction === "long" ? "exit" : "entry";
+    return "other";
+  };
+
+  const entries: FillLeg[] = [];
+  const exits: FillLeg[] = [];
+  for (const f of ordered) {
+    const leg: FillLeg = { qty: Math.abs(f.quantity), price: f.price };
+    const cls = classify(f.code);
+    if (cls === "entry") entries.push(leg);
+    else if (cls === "exit") exits.push(leg);
+  }
+  if (entries.length === 0 && exits.length === 0) return null;
+
+  // Averaging down: a later entry filled at a materially worse price than the
+  // first — for a long that's cheaper, for a short that's more expensive.
+  const priced = entries.filter((e): e is { qty: number; price: number } => e.price != null);
+  let averagedDown = false;
+  let addWorsePct: number | null = null;
+  if (priced.length >= 2) {
+    const first = priced[0].price;
+    const adds = priced.slice(1).map((e) => e.price);
+    const worst = direction === "long" ? Math.min(...adds) : Math.max(...adds);
+    const worseFrac =
+      direction === "long" ? (first - worst) / first : (worst - first) / first;
+    if (worseFrac > 0.03 && first > 0) {
+      averagedDown = true;
+      addWorsePct = Math.round(worseFrac * 1000) / 10;
+    }
+  }
+
+  return {
+    entries,
+    exits,
+    scaledIn: entries.length >= 2,
+    scaledOut: exits.length >= 2,
+    averagedDown,
+    addWorsePct,
+  };
+}
+
 /** Only the numbers the model is allowed to talk about. */
 interface ReviewInput {
   name: string;
@@ -65,6 +146,7 @@ interface ReviewInput {
   holdingLabel: string;
   excursions: Excursions;
   run: RunSummary | null;
+  fills: FillsSummary | null;
 }
 
 const fmtHold = (seconds: number | null): string => {
@@ -89,6 +171,7 @@ Hard rules:
 - Be concise. Every sentence must earn its place. Prefer specifics over generalities.
 - The price excursions describe the UNDERLYING stock, not the option's value. Say "the stock" / "the share price", never imply it's the option's drawdown.
 - The P/L-journey figures ARE the position's own dollar P/L over the hold. When they're marked estimated, say "about" or "roughly". Use them to notice patterns like sitting through a large drawdown before the trade worked, or giving back most of the gains before exiting — this is exactly the kind of thing worth reviewing.
+- You may be given the fills — how the position was built and unwound. If they show a notable execution pattern that shaped the outcome (especially AVERAGING DOWN: adding to the position at a worse price while it was moving against you; or scaling in / scaling out), make that one of your observations, tied to the fill prices and the result. This is often the single most useful thing to point out.
 - Nonjudgmental tone. Point out patterns as things to notice, not mistakes to scold. "What could have gone better" is fair as a retrospective observation; never phrase it as advice for the future or a prediction.
 
 Return ONLY JSON in exactly this shape:
@@ -148,8 +231,37 @@ Your position's own P/L during the hold (${i.run.estimated ? "estimated from the
 - The high point came ${i.run.peakBeforeExit ? "BEFORE you exited — gains were then given back" : "right at your exit"}`
     : ""
 }
+${i.fills ? fillsPrompt(i.fills) : ""}
 
-Explain this trade to the trader using only these numbers. If the P/L journey shows a large drawdown you sat through or a meaningful giveback before exit, make that one of your observations.`;
+Explain this trade to the trader using only these numbers. If the P/L journey shows a large drawdown you sat through or a meaningful giveback before exit, make that one of your observations. If the fills show averaging down or notable scaling that shaped the result, make that an observation too.`;
+}
+
+/** The fills section of the prompt — prices are capped so it can't balloon. */
+function fillsPrompt(f: FillsSummary): string {
+  const prices = (legs: FillLeg[]): string => {
+    const p = legs.filter((l) => l.price != null).map((l) => `$${l.price}`);
+    if (p.length === 0) return "";
+    if (p.length <= 8) return ` at ${p.join(", ")}`;
+    return ` at ${p.slice(0, 8).join(", ")}, … (${p.length} priced fills)`;
+  };
+
+  const lines = [
+    "",
+    "How you built and unwound the position (fills):",
+    `- Opened/added in ${f.entries.length} fill(s)${prices(f.entries)}.`,
+    `- Closed in ${f.exits.length} fill(s)${prices(f.exits)}.`,
+  ];
+  if (f.averagedDown) {
+    lines.push(
+      `- You ADDED to the position at a worse price than your first entry${
+        f.addWorsePct != null ? ` (about ${f.addWorsePct}% worse)` : ""
+      } — i.e. you averaged down while the trade was moving against you.`,
+    );
+  } else if (f.scaledIn) {
+    lines.push("- You scaled in across several entries.");
+  }
+  if (f.scaledOut) lines.push("- You scaled out across several exits.");
+  return lines.join("\n");
 }
 
 interface ReviewContext {
@@ -166,10 +278,13 @@ async function buildContext(
   const trade = await getTradeById(userId, tradeId);
   if (!trade || !trade.entryAt) return null;
 
-  const chart = await getTradeChart(trade.symbol, trade.entryAt, trade.exitAt).catch(
-    () => null,
-  );
+  const [chart, fillRows] = await Promise.all([
+    getTradeChart(trade.symbol, trade.entryAt, trade.exitAt).catch(() => null),
+    getTradeFills(userId, tradeId).catch(() => [] as TradeFill[]),
+  ]);
   if (!chart || chart.entryPrice == null || chart.exitPrice == null) return null;
+
+  const fills = summarizeFills(fillRows, trade.direction);
 
   const excursions = computeExcursions(
     chart.candles,
@@ -219,6 +334,7 @@ async function buildContext(
     holdingLabel: fmtHold(trade.holdingSeconds),
     excursions,
     run,
+    fills,
   };
 
   return {
@@ -236,6 +352,7 @@ async function buildContext(
       input.holdingLabel,
       excursions,
       run,
+      fills,
     ),
   };
 }

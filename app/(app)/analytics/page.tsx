@@ -25,7 +25,7 @@ export default async function AnalyticsPage() {
 
   if (trades.length === 0) {
     return (
-      <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1000px] lg:pt-10">
+      <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
         <h1 className="mb-4 text-[24px] font-semibold tracking-tight text-ink lg:text-[28px]">
           Analytics
         </h1>

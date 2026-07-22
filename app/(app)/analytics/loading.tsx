@@ -3,7 +3,7 @@ import { Skeleton, ChartSkeleton } from "@/components/analytics/loaders";
 /** Shown instantly while the server fetches trades for the analytics page. */
 export default function Loading() {
   return (
-    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1000px] lg:pt-10">
+    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-[24px] font-semibold tracking-tight text-ink lg:text-[28px]">
           Analytics

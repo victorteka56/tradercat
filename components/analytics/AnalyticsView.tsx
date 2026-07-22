@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EquityPanel } from "@/components/journal/EquityPanel";
-import { KeyFindings } from "@/components/analytics/KeyFindings";
+import { keyFindingsCards } from "@/components/analytics/KeyFindings";
 import {
   PieCard,
   DivergingBar,
@@ -47,9 +47,10 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
 
   const long = a?.byDirection.find((b) => b.key === "long");
   const short = a?.byDirection.find((b) => b.key === "short");
+  const findings = a ? keyFindingsCards(a) : [];
 
   return (
-    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1000px] lg:pt-10">
+    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[24px] font-semibold tracking-tight text-ink lg:text-[28px]">
           Analytics
@@ -110,53 +111,69 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
             <EquityPanel series={series} title="Equity" controlledRange={range} />
           </div>
 
-          {/* Behaviour — bespoke graphics, the part Home doesn't tell you. */}
-          <KeyFindings a={a} />
+          {findings.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <h2 className="text-[14px] font-semibold text-ink">Key findings</h2>
+              <span className="text-[11.5px] text-ink-faint">how you actually trade</span>
+            </div>
+          )}
 
-          <div className="mb-4 grid gap-3 lg:grid-cols-2">
-            <PieCard
-              title="Options vs stocks"
-              question="Which instrument makes you money?"
-              buckets={a.byType}
-              href="/analytics/type"
-            />
-            <DivergingBar
-              title="Long vs short"
-              question="Bullish bets (longs & calls) vs bearish (shorts & puts)."
-              left={long}
-              right={short}
-              href="/analytics/direction"
-            />
-          </div>
-
-          <div className="mb-4 grid gap-3 lg:grid-cols-2">
-            <BarBreakdown
-              title="By day of week"
-              question="When do you trade best?"
-              buckets={a.byDayOfWeek}
-              href="/analytics/days"
-            />
-            <ColumnChart
-              title="By hold length"
-              question="Do longer holds pay off?"
-              buckets={a.byHold}
-              emptyLabel="Needs execution times — connect your brokerage."
-              href="/analytics/hold"
-            />
-          </div>
-
-          <div className="mb-4">
-            <ActivityChart monthly={a.monthly} href="/analytics/activity" />
-          </div>
-
-          <div className="mb-4 grid gap-3 lg:grid-cols-2">
-            <TreemapChart
-              title="Symbols"
-              question="Where you make and lose the most — tile size is P/L."
-              buckets={a.symbols}
-              href="/analytics/symbols"
-            />
-            <DistributionCard buckets={a.distribution} />
+          {/* One mosaic — behavioural findings first, then the breakdowns, all
+              packed into two balanced columns so no card strands a gap. */}
+          <div className="gap-3 pb-2 lg:columns-2">
+            {findings.map((card, i) => (
+              <div key={`kf-${i}`} className="mb-3 break-inside-avoid">
+                {card}
+              </div>
+            ))}
+            <div className="mb-3 break-inside-avoid">
+              <PieCard
+                title="Options vs stocks"
+                question="Which instrument makes you money?"
+                buckets={a.byType}
+                href="/analytics/type"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <DivergingBar
+                title="Long vs short"
+                question="Bullish bets (longs & calls) vs bearish (shorts & puts)."
+                left={long}
+                right={short}
+                href="/analytics/direction"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <BarBreakdown
+                title="By day of week"
+                question="When do you trade best?"
+                buckets={a.byDayOfWeek}
+                href="/analytics/days"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <ColumnChart
+                title="By hold length"
+                question="Do longer holds pay off?"
+                buckets={a.byHold}
+                emptyLabel="Needs execution times — connect your brokerage."
+                href="/analytics/hold"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <ActivityChart monthly={a.monthly} href="/analytics/activity" />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <TreemapChart
+                title="Symbols"
+                question="Where you make and lose the most — tile size is P/L."
+                buckets={a.symbols}
+                href="/analytics/symbols"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <DistributionCard buckets={a.distribution} />
+            </div>
           </div>
           <div className="mb-6" />
         </>

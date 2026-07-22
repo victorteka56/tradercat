@@ -12,7 +12,7 @@ import * as echarts from "echarts";
 
 export const C = {
   pos: "#17915f",
-  neg: "#d0453b",
+  neg: "#bd4640",
   info: "#3a5a9c",
   amber: "#c68a1d",
   ink: "#14181f",

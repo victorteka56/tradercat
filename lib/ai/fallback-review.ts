@@ -1,5 +1,5 @@
 import type { Excursions } from "@/lib/analysis/excursions";
-import type { RunSummary, TradeReview } from "./trade-review";
+import type { FillsSummary, RunSummary, TradeReview } from "./trade-review";
 
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -23,6 +23,7 @@ export function fallbackReview(
   holdingLabel: string,
   e: Excursions,
   run: RunSummary | null = null,
+  fills: FillsSummary | null = null,
 ): TradeReview {
   const won = netPnl >= 0;
   const dir = e.thesis === "bullish" ? "rise" : "fall";
@@ -52,6 +53,22 @@ export function fallbackReview(
     }.${contractLine}`;
 
   const observations: TradeReview["observations"] = [];
+
+  // Execution first when it shaped the result — averaging down into a losing
+  // position is usually the most useful thing to surface.
+  if (fills?.averagedDown) {
+    observations.push({
+      label: "Averaged down",
+      detail: `You added to the position at a worse price than your first entry${
+        fills.addWorsePct != null ? ` (about ${fills.addWorsePct}% worse)` : ""
+      }, as ${symbol} kept moving against the trade${won ? "" : " — and it didn't recover"}.`,
+    });
+  } else if (fills?.scaledOut) {
+    observations.push({
+      label: "Scaled out",
+      detail: `You closed the position across ${fills.exits.length} separate exits rather than all at once.`,
+    });
+  }
 
   if (e.entryPositionPct != null) {
     const where =
@@ -104,5 +121,5 @@ export function fallbackReview(
       ? `The share price moved against the trade the whole way — worth reviewing the entry timing.`
       : null;
 
-  return { headline, whatHappened, observations, toReview };
+  return { headline, whatHappened, observations: observations.slice(0, 4), toReview };
 }
