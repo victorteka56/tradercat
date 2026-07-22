@@ -19,7 +19,7 @@ import { TradeChartCard } from "@/components/journal/TradeChartCard";
 import { ExcursionCard } from "@/components/journal/ExcursionCard";
 import { RunningPnlCard } from "@/components/journal/RunningPnlCard";
 import { TradeNotesCard } from "@/components/journal/TradeNotesCard";
-import { TradeReviewPanel } from "@/components/journal/TradeReviewPanel";
+import { TradeAnalysisDrawer } from "@/components/journal/TradeAnalysisDrawer";
 import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
 import { computeExcursions } from "@/lib/analysis/excursions";
 import { computeRunningPnl } from "@/lib/analysis/running-pnl";
@@ -53,9 +53,11 @@ export default async function TradeDetailPage({
       )
     : null;
 
+  // The chart shows the coarser display bars (15min by default); the excursion
+  // and running-P/L math below runs on the finer `chart.candles`.
   const chartData = chart
     ? {
-        candles: chart.candles.map((c) => ({
+        candles: chart.displayCandles.map((c) => ({
           time: Math.floor(c.ts.getTime() / 1000),
           open: c.open,
           high: c.high,
@@ -65,7 +67,7 @@ export default async function TradeDetailPage({
         })),
         entryPrice: chart.entryPrice,
         exitPrice: chart.exitPrice,
-        interval: chart.interval,
+        interval: chart.displayInterval,
         fromMs: chart.from.getTime(),
         toMs: chart.to.getTime(),
       }
@@ -116,8 +118,28 @@ export default async function TradeDetailPage({
   const size = Math.round(Math.max(trade.openedQty, trade.closedQty));
   const money2 = (n: number | null) => (n == null ? "—" : `$${n.toFixed(2)}`);
 
+  // Timing card — the excursion breakdown, or a plain note when there's no
+  // intraday history. Defined once; it sits beside the P/L journey when we have
+  // one, otherwise full width.
+  const timingBlock = excursions ? (
+    <ExcursionCard excursions={excursions} symbol={trade.symbol} />
+  ) : (
+    <SurfaceCard className="mb-4 p-4">
+      <div className="mb-2">
+        <StatusChip tone="neutral">Timing</StatusChip>
+      </div>
+      <p className="text-[12.5px] leading-relaxed text-ink-soft">
+        Measuring how far {trade.symbol} moved for and against this trade needs
+        intraday price history with exact times.{" "}
+        {trade.source !== "snaptrade"
+          ? "CSV imports don't include times — connect your brokerage."
+          : "It isn't available for this trade yet."}
+      </p>
+    </SurfaceCard>
+  );
+
   return (
-    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[900px] lg:pt-10">
+    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
       <Link
         href="/journal"
         className="mb-3 inline-flex items-center gap-1 text-[13px] font-semibold text-ink-soft"
@@ -153,17 +175,77 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
-      {/* The chart leads — it's the fastest way to see what actually happened. */}
-      <TradeChartCard
-        trade={trade}
-        data={chartData}
-        marketDataConfigured={marketDataConfigured}
-      />
+      {/* The analysis launcher — a compact teaser that opens the full,
+          styled read as a panel sliding in from the right. */}
+      {env.DEEPSEEK_API_KEY &&
+      initialReview &&
+      !("needsData" in initialReview) ? (
+        <TradeAnalysisDrawer
+          tradeId={trade.id}
+          initial={initialReview.review}
+          initialKind={initialReview.kind}
+          trade={{
+            symbol: trade.symbol,
+            netPnl: trade.netPnl,
+            pnlPct: trade.pnlPct,
+            incomplete: trade.incomplete,
+            held:
+              trade.holdingSeconds != null && hasTimeOfDay(trade.entryAt)
+                ? holdingLabel(trade.holdingSeconds)
+                : null,
+          }}
+          run={
+            running
+              ? {
+                  peak: running.peak.pnl,
+                  trough: running.trough.pnl,
+                  maxDrawdown: running.maxDrawdown,
+                  giveback: running.giveback,
+                  timeUnderwaterPct: running.timeUnderwaterPct,
+                  estimated: running.estimated,
+                }
+              : null
+          }
+          exc={
+            excursions
+              ? {
+                  favorable: excursions.favorableExcursionPct,
+                  adverse: excursions.adverseExcursionPct,
+                  captured: excursions.capturedPct,
+                  netMove: excursions.netMovePct,
+                  directionCorrect: excursions.directionCorrect,
+                }
+              : null
+          }
+        />
+      ) : env.DEEPSEEK_API_KEY ? null : (
+        <SurfaceCard className="mb-4 p-4">
+          <div className="mb-2">
+            <StatusChip tone="neutral">Trade analysis</StatusChip>
+          </div>
+          <p className="text-[12.5px] leading-relaxed text-ink-soft">
+            Plain-English analysis of each trade. Add a DeepSeek API key to
+            enable it.
+          </p>
+        </SurfaceCard>
+      )}
 
-      {running && <RunningPnlCard data={running} symbol={trade.symbol} />}
+      {/* Mosaic: two independent columns so cards stack to fill the height
+          rather than leaving a rigid row's worth of whitespace. Left holds the
+          big visuals; right stacks the numbers. */}
+      <div className="lg:flex lg:items-start lg:gap-5">
+        <div className="min-w-0 lg:flex-[1.7]">
+          <TradeChartCard
+            trade={trade}
+            data={chartData}
+            marketDataConfigured={marketDataConfigured}
+          />
+          {running && <RunningPnlCard data={running} symbol={trade.symbol} />}
+        </div>
 
-      {/* Dense stats block — the hard numbers, no prose. */}
-      <SurfaceCard className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 p-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="min-w-0 lg:flex-1">
+          {/* Dense stats block — a label→value list that fits the sidebar cleanly. */}
+          <SurfaceCard className="mb-4 divide-y divide-line px-4">
         <Stat
           label="Net ROI"
           value={
@@ -225,48 +307,8 @@ export default async function TradeDetailPage({
           value={dayLabel(trade.exitAt)}
           sub={timeLabel(trade.exitAt)}
         />
-      </SurfaceCard>
-
-      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
-        <div>
-          {excursions ? (
-            <ExcursionCard excursions={excursions} symbol={trade.symbol} />
-          ) : (
-            <SurfaceCard className="mb-4 p-4">
-              <div className="mb-2">
-                <StatusChip tone="neutral">Timing</StatusChip>
-              </div>
-              <p className="text-[12.5px] leading-relaxed text-ink-soft">
-                Measuring how far {trade.symbol} moved for and against this trade
-                needs intraday price history with exact times.{" "}
-                {trade.source !== "snaptrade"
-                  ? "CSV imports don't include times — connect your brokerage."
-                  : "It isn't available for this trade yet."}
-              </p>
-            </SurfaceCard>
-          )}
-        </div>
-
-        <div>
-          {env.DEEPSEEK_API_KEY &&
-          initialReview &&
-          !("needsData" in initialReview) ? (
-            <TradeReviewPanel
-              tradeId={trade.id}
-              initial={initialReview.review}
-              initialKind={initialReview.kind}
-            />
-          ) : env.DEEPSEEK_API_KEY ? null : (
-            <SurfaceCard className="mb-4 p-4">
-              <div className="mb-2">
-                <StatusChip tone="neutral">Trade review</StatusChip>
-              </div>
-              <p className="text-[12.5px] leading-relaxed text-ink-soft">
-                Plain-English analysis of each trade. Add a DeepSeek API key to
-                enable it.
-              </p>
-            </SurfaceCard>
-          )}
+        </SurfaceCard>
+          {timingBlock}
         </div>
       </div>
 
@@ -328,24 +370,24 @@ function Stat({
   muted?: boolean;
 }) {
   return (
-    <div>
-      <div className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
-        {label}
-      </div>
-      <div
-        className={`tnum mt-0.5 text-[14px] font-semibold ${
-          tone === "pos"
-            ? "text-pos"
-            : tone === "neg"
-            ? "text-neg"
-            : muted
-            ? "text-ink-faint"
-            : "text-ink"
-        }`}
-      >
-        {value}
-      </div>
-      {sub && <div className="tnum text-[11px] text-ink-faint">{sub}</div>}
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span className="shrink-0 text-[12px] font-medium text-ink-soft">{label}</span>
+      <span className="min-w-0 text-right">
+        <span
+          className={`tnum text-[13.5px] font-semibold ${
+            tone === "pos"
+              ? "text-pos"
+              : tone === "neg"
+              ? "text-neg"
+              : muted
+              ? "text-ink-faint"
+              : "text-ink"
+          }`}
+        >
+          {value}
+        </span>
+        {sub && <span className="tnum ml-1.5 text-[11px] text-ink-faint">{sub}</span>}
+      </span>
     </div>
   );
 }

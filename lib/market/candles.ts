@@ -35,12 +35,28 @@ function provider(): MarketDataProvider | null {
   return null;
 }
 
-/** Bar width that keeps a trade readable: ~40-150 candles across its span. */
+/**
+ * Fine bar width used for the analysis math (drawdown, excursions) — the finer
+ * the bars, the truer the P/L path. This is NOT what the chart opens on.
+ */
 export function intervalForSpan(fromMs: number, toMs: number): Interval {
   const hours = (toMs - fromMs) / 3_600_000;
   if (hours <= 8) return "1min";
   if (hours <= 48) return "5min";
   if (hours <= 24 * 10) return "1hour";
+  return "1day";
+}
+
+/**
+ * Coarser bar width the *chart* opens on — 15min for most trades, so it reads
+ * cleanly. The trader can switch timeframes, and the analysis still runs on the
+ * finer `intervalForSpan` bars so drawdown/excursions stay precise.
+ */
+export function displayIntervalForSpan(fromMs: number, toMs: number): Interval {
+  const hours = (toMs - fromMs) / 3_600_000;
+  if (hours <= 2) return "5min";
+  if (hours <= 24 * 4) return "15min";
+  if (hours <= 24 * 25) return "1hour";
   return "1day";
 }
 
@@ -105,8 +121,12 @@ export async function getCandles(
 }
 
 export interface TradeChartData {
+  /** Fine bars for the analysis math (drawdown, excursions). */
   candles: Candle[];
   interval: Interval;
+  /** Coarser bars the chart opens on, plus the interval it represents. */
+  displayCandles: Candle[];
+  displayInterval: Interval;
   /** The padded window these candles span — lets the client refetch other intervals. */
   from: Date;
   to: Date;
@@ -140,6 +160,15 @@ export async function getTradeChart(
   const candles = await getCandles(underlying, interval, from, to);
   if (candles.length === 0) return null;
 
+  // Coarser bars for the chart itself; reuse the fine set when they coincide,
+  // and fall back to it if the coarser fetch turns up empty.
+  const displayInterval = displayIntervalForSpan(entryAt.getTime(), end.getTime());
+  let displayCandles = candles;
+  if (displayInterval !== interval) {
+    const coarse = await getCandles(underlying, displayInterval, from, to);
+    if (coarse.length > 0) displayCandles = coarse;
+  }
+
   const at = (t: Date): number | null => {
     let best: Candle | null = null;
     let bestGap = Infinity;
@@ -156,6 +185,8 @@ export async function getTradeChart(
   return {
     candles,
     interval,
+    displayCandles,
+    displayInterval,
     from,
     to,
     entryPrice: at(entryAt),

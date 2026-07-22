@@ -112,12 +112,9 @@ export function TradeChartCard({ trade, data, marketDataConfigured }: Props) {
 
       <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3">
         <div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-info" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-              You bought
-            </span>
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-pos">
+            Entry
+          </span>
           <div className="tnum mt-0.5 text-[12px] text-ink">
             {dateTimeLabel(trade.entryAt)}
           </div>
@@ -128,12 +125,9 @@ export function TradeChartCard({ trade, data, marketDataConfigured }: Props) {
           )}
         </div>
         <div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-ink" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-              You sold
-            </span>
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-neg">
+            Exit
+          </span>
           <div className="tnum mt-0.5 text-[12px] text-ink">
             {trade.exitAt ? dateTimeLabel(trade.exitAt) : "Still open"}
           </div>

@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { requireUser } from "@/lib/auth";
+
+// The authenticated app is private, per-user data — never index it.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AppLayout({
   children,

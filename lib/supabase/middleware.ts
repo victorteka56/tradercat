@@ -4,6 +4,16 @@ import { env } from "@/lib/env";
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/auth"];
 
+/** Public SEO / metadata routes crawlers must reach without auth. */
+const PUBLIC_EXACT = new Set([
+  "/",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/manifest.webmanifest",
+  "/llms.txt",
+]);
+const PUBLIC_PREFIXES = ["/icon", "/apple-icon", "/opengraph-image", "/twitter-image"];
+
 /**
  * Refreshes the auth session on every request and gates the app routes.
  * Do not remove the getUser() call — it is what revalidates the token.
@@ -37,9 +47,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_ROUTES.some((p) => pathname.startsWith(p));
+  const isPublic =
+    PUBLIC_EXACT.has(pathname) ||
+    PUBLIC_ROUTES.some((p) => pathname.startsWith(p)) ||
+    PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 
-  // Unauthenticated users cannot reach the app.
+  // Unauthenticated users cannot reach the app (but can see public pages).
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -47,8 +60,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated users skip the auth screens.
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  // Signed-in users skip the marketing and auth screens — straight to the app.
+  if (user && (pathname === "/" || pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";
     url.search = "";

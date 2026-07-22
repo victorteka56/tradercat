@@ -13,8 +13,14 @@
   --line: #e7eaf0;
   --info: #3a5a9c; /* muted slate-blue for information */
   --pos: #17915f; /* green ONLY for market/P&L up */
-  --neg: #d0453b; /* red ONLY for market/P&L down */
+  --neg: #bd4640; /* refined, muted red for market/P&L down — calmer on the eye */
   --amber: #c68a1d; /* risk / attention */
+}
+
+/* Editorial serif for page titles — a touch of sophistication that keeps every
+   number in the crisp sans. */
+h1 {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
 }
 
 * {
@@ -47,4 +53,28 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--line);
   border-radius: 999px;
+}
+
+/* ---- Trade analysis: "Refining…" affordance ---- */
+
+/* Three dots that rise in sequence — the "thinking" cue while the AI narrates. */
+@keyframes tc-rise {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.tc-dot {
+  animation: tc-rise 1s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-dot {
+    animation: none;
+  }
 }
