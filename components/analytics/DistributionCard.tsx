@@ -2,7 +2,7 @@
 
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { DistBucket } from "@/lib/analysis/analytics";
-import { EChart, C, vGrad, tooltip } from "./echart";
+import { EChart, C, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
 
 /** Histogram of per-trade P/L — the shape of your outcomes, losses left. */
 export function DistributionCard({ buckets }: { buckets: DistBucket[] }) {
@@ -37,13 +37,15 @@ export function DistributionCard({ buckets }: { buckets: DistBucket[] }) {
     series: [
       {
         type: "bar",
-        barWidth: "62%",
+        barWidth: "64%",
+        itemStyle: { ...barShadow },
+        emphasis: emphasisBar,
         data: buckets.map((b) => ({
           value: b.count,
           d: b,
           itemStyle: {
             color: vGrad(b.tone === "pos" ? C.pos : b.tone === "neg" ? C.neg : C.inkFaint),
-            borderRadius: [5, 5, 0, 0],
+            borderRadius: [6, 6, 0, 0],
           },
         })),
         label: {
@@ -63,7 +65,7 @@ export function DistributionCard({ buckets }: { buckets: DistBucket[] }) {
       <div className="mt-0.5 text-[11.5px] text-ink-faint">
         How your trades cluster — losses left, wins right.
       </div>
-      <EChart option={option} height={190} />
+      <EChart option={option} height={210} />
     </SurfaceCard>
   );
 }

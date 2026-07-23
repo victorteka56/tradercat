@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd, usdCompact } from "@/lib/format";
-import { EChart, C, hGrad, tooltip } from "./echart";
+import { EChart, C, hGrad, tooltip, barShadow, emphasisBar } from "./echart";
 import { CardHead } from "./CardHead";
 
 /** Ranked horizontal P/L bars — labels on the axis, values at the bar ends. */
@@ -54,7 +54,9 @@ export function BarBreakdown({
     series: [
       {
         type: "bar",
-        barWidth: rows.length > 6 ? 9 : 13,
+        barWidth: rows.length > 6 ? 10 : 15,
+        itemStyle: { ...barShadow },
+        emphasis: emphasisBar,
         data: rows.map((b) => {
           const pos = b.pnl >= 0;
           return {
@@ -62,7 +64,7 @@ export function BarBreakdown({
             b,
             itemStyle: {
               color: hGrad(pos ? C.pos : C.neg),
-              borderRadius: pos ? [0, 5, 5, 0] : [5, 0, 0, 5],
+              borderRadius: pos ? [0, 6, 6, 0] : [6, 0, 0, 6],
             },
           };
         }),
@@ -91,7 +93,7 @@ export function BarBreakdown({
       {buckets.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">{emptyLabel}</div>
       ) : (
-        <EChart option={option} height={Math.max(120, rows.length * 30 + 20)} />
+        <EChart option={option} height={Math.max(130, rows.length * 34 + 24)} />
       )}
     </SurfaceCard>
   );

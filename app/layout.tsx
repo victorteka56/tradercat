@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/seo";
-import { ThemeRegistry } from "@/components/theme/ThemeRegistry";
 
 // Inter carries the data — dense tables and figures stay razor-sharp.
 const inter = Inter({
@@ -85,9 +84,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
-      <body className="bg-bg font-sans">
-        <ThemeRegistry>{children}</ThemeRegistry>
-      </body>
+      <body className="bg-bg font-sans">{children}</body>
     </html>
   );
 }

@@ -13,6 +13,13 @@ const fmtDays = (d: number) => (d < 1 ? "<1d" : d < 10 ? `${d.toFixed(1)}d` : `$
 const usd0 = (n: number) =>
   `${n < 0 ? "-" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
 
+/** Glossy fill for the mini-chart bars — a top highlight over the tone colour
+ *  plus a soft shadow, so they read premium rather than flat. */
+const glossy = (v: "pos" | "neg" | "info"): React.CSSProperties => ({
+  background: `linear-gradient(180deg, rgba(255,255,255,0.30), rgba(255,255,255,0) 62%), var(--${v})`,
+  boxShadow: "0 1px 3px rgba(20,24,31,0.16)",
+});
+
 /**
  * Behavioural findings as standalone cards. Returned as a plain array so the
  * page can pack them into the same mosaic as the breakdown charts — a separate
@@ -104,8 +111,8 @@ export function keyFindingsCards(a: Analytics): React.ReactNode[] {
         </div>
         <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-surface-2">
           <div
-            className={`h-full rounded-full ${conc.tone === "neg" ? "bg-neg" : "bg-info"}`}
-            style={{ width: `${Math.min(100, conc.pct)}%` }}
+            className="h-full rounded-full"
+            style={{ ...glossy(conc.tone === "neg" ? "neg" : "info"), width: `${Math.min(100, conc.pct)}%` }}
           />
         </div>
       </Card>,
@@ -150,10 +157,10 @@ function CompareBar({
         <span className="text-[11px] font-semibold text-ink-soft">{label}</span>
         <span className={`tnum text-[12px] font-semibold ${tone === "pos" ? "text-pos" : "text-neg"}`}>{value}</span>
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-2">
+      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-surface-2">
         <div
-          className={`h-full rounded-full ${tone === "pos" ? "bg-pos" : "bg-neg"}`}
-          style={{ width: `${Math.max(4, Math.min(100, pct))}%` }}
+          className="h-full rounded-full"
+          style={{ ...glossy(tone), width: `${Math.max(4, Math.min(100, pct))}%` }}
         />
       </div>
     </div>
@@ -175,8 +182,8 @@ function MiniColumn({
     <div className="flex h-full flex-col items-center justify-end">
       <span className="tnum mb-1 text-[12px] font-semibold text-ink">{fmtDays(days)}</span>
       <div
-        className={`w-8 rounded-t-md ${tone === "pos" ? "bg-pos" : "bg-neg"}`}
-        style={{ height: `${Math.max(6, (pct / 100) * 54)}px` }}
+        className="w-8 rounded-t-md"
+        style={{ ...glossy(tone), height: `${Math.max(6, (pct / 100) * 54)}px` }}
       />
       <span className="mt-1 text-[10px] font-semibold text-ink-faint">{label}</span>
     </div>
@@ -201,6 +208,7 @@ function Ring({ pct, label, tone }: { pct: number; label: string; tone: "pos" | 
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={`${(pct / 100) * c} ${c}`}
+            style={{ filter: "drop-shadow(0 1px 2px rgba(20,24,31,0.18))" }}
           />
         </svg>
         <div className="tnum absolute inset-0 flex items-center justify-center text-[14px] font-bold text-ink">

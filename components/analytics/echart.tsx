@@ -23,35 +23,68 @@ export const C = {
   surface2: "#f1f3f6",
 };
 
-/** Vertical gradient (bars/columns) — solid at the base, softer at the tip. */
+/** Glossy vertical gradient (bars/columns) — a light highlight at the tip that
+ *  deepens toward the base, so a bar reads as a solid object with volume. */
 export const vGrad = (color: string) =>
   new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-    { offset: 0, color },
-    { offset: 1, color: color + "A6" },
+    { offset: 0, color: color + "FF" },
+    { offset: 0.55, color },
+    { offset: 1, color: shade(color, -0.14) },
   ]);
 
-/** Horizontal gradient (row bars). */
+/** Glossy horizontal gradient (row bars) — deepens toward the value end. */
 export const hGrad = (color: string) =>
   new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-    { offset: 0, color: color + "A6" },
-    { offset: 1, color },
+    { offset: 0, color: shade(color, -0.12) },
+    { offset: 0.5, color },
+    { offset: 1, color: color + "FF" },
   ]);
 
-/** Soft area fill (line charts) — tinted at the top, fading to nothing. */
+/** Soft area fill (line charts) — richer tint at the top, fading to nothing. */
 export const areaGrad = (color: string) =>
   new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-    { offset: 0, color: color + "33" },
+    { offset: 0, color: color + "45" },
+    { offset: 0.7, color: color + "12" },
     { offset: 1, color: color + "00" },
   ]);
+
+/** Darken/lighten a #rrggbb by a fraction (-1..1). */
+function shade(hex: string, amt: number): string {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.replace(/(.)/g, "$1$1") : h, 16);
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const r = clamp(((n >> 16) & 255) * (1 + amt));
+  const g = clamp(((n >> 8) & 255) * (1 + amt));
+  const b = clamp((n & 255) * (1 + amt));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+/** Soft drop shadow for bars/marks — the main "premium" sense of depth. */
+export const barShadow = {
+  shadowBlur: 10,
+  shadowColor: "rgba(20,24,31,0.12)",
+  shadowOffsetY: 3,
+};
+
+/** Hover state for bars: the rest recede, the hovered mark lifts. */
+export const emphasisBar = {
+  focus: "series" as const,
+  itemStyle: {
+    shadowBlur: 20,
+    shadowColor: "rgba(20,24,31,0.22)",
+    shadowOffsetY: 5,
+  },
+};
 
 export const tooltip = {
   trigger: "item" as const,
   backgroundColor: C.surface,
   borderColor: C.line,
   borderWidth: 1,
-  padding: [8, 12],
+  padding: [9, 13],
   textStyle: { color: C.ink, fontSize: 12, fontWeight: 500 },
-  extraCssText: "border-radius:12px;box-shadow:0 8px 24px rgba(20,24,31,0.10);",
+  extraCssText:
+    "border-radius:14px;box-shadow:0 12px 32px rgba(20,24,31,0.14),0 2px 6px rgba(20,24,31,0.06);",
 };
 
 export const BASE = {

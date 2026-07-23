@@ -135,6 +135,14 @@ export function RunningPnlCard({
             <clipPath id="rpnl-below">
               <rect x="0" y={zeroY} width={W} height={H - zeroY} />
             </clipPath>
+            <linearGradient id="rpnl-pos" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--pos)" stopOpacity="0.34" />
+              <stop offset="100%" stopColor="var(--pos)" stopOpacity="0.02" />
+            </linearGradient>
+            <linearGradient id="rpnl-neg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--neg)" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="var(--neg)" stopOpacity="0.34" />
+            </linearGradient>
           </defs>
 
           {/* gridlines */}
@@ -145,16 +153,16 @@ export function RunningPnlCard({
               strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
           )}
 
-          {/* two-tone fill */}
-          <polygon points={areaToZero} fill="var(--pos)" fillOpacity="0.14" clipPath="url(#rpnl-above)" />
-          <polygon points={areaToZero} fill="var(--neg)" fillOpacity="0.14" clipPath="url(#rpnl-below)" />
+          {/* two-tone gradient fill — richest at the extremes, fading to zero */}
+          <polygon points={areaToZero} fill="url(#rpnl-pos)" clipPath="url(#rpnl-above)" />
+          <polygon points={areaToZero} fill="url(#rpnl-neg)" clipPath="url(#rpnl-below)" />
 
           <polyline
             points={line}
             fill="none"
             stroke="var(--ink-soft)"
-            strokeOpacity="0.55"
-            strokeWidth="1.5"
+            strokeOpacity="0.72"
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"

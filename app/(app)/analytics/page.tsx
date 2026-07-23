@@ -1,9 +1,5 @@
-import NextLink from "next/link";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
+import Link from "next/link";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AnalyticsView } from "@/components/analytics/AnalyticsView";
 import { requireUser } from "@/lib/auth";
 import { getTrades } from "@/lib/queries/journal";
@@ -29,25 +25,24 @@ export default async function AnalyticsPage() {
 
   if (trades.length === 0) {
     return (
-      <Box sx={{ px: { xs: 2, lg: 4 }, py: { xs: 2, lg: 3 }, maxWidth: 1160, mx: "auto" }}>
-        <Typography variant="h4" sx={{ mb: 3, fontSize: { xs: 26, lg: 30 } }}>
+      <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
+        <h1 className="mb-4 text-[24px] font-semibold tracking-tight text-ink lg:text-[28px]">
           Analytics
-        </Typography>
-        <Card>
-          <CardContent sx={{ textAlign: "center", py: 6, maxWidth: 420, mx: "auto" }}>
-            <Typography variant="h6" sx={{ fontSize: 17 }}>
-              No realized trades yet
-            </Typography>
-            <Typography sx={{ mt: 1, mb: 3, fontSize: 13.5, color: "text.secondary", lineHeight: 1.6 }}>
-              Analytics build from your closed trades. Import a broker export or
-              connect your brokerage and they&apos;ll fill in here.
-            </Typography>
-            <Button component={NextLink} href="/import" variant="contained" size="large">
-              Import trades
-            </Button>
-          </CardContent>
-        </Card>
-      </Box>
+        </h1>
+        <SurfaceCard className="p-8 text-center">
+          <h2 className="text-[17px] font-semibold text-ink">No realized trades yet</h2>
+          <p className="mx-auto mt-1.5 max-w-[340px] text-[13.5px] leading-relaxed text-ink-soft">
+            Analytics build from your closed trades. Import a broker export or
+            connect your brokerage and they&apos;ll fill in here.
+          </p>
+          <Link
+            href="/import"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-ink px-6 text-[14px] font-semibold text-white hover:bg-ink/90"
+          >
+            Import trades
+          </Link>
+        </SurfaceCard>
+      </main>
     );
   }
 

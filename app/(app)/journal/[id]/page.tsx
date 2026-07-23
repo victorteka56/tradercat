@@ -1,11 +1,7 @@
-import NextLink from "next/link";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Typography from "@mui/material/Typography";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { getTradeById, getTradeFills, getTradeNote } from "@/lib/queries/journal";
@@ -28,9 +24,6 @@ import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
 import { computeExcursions } from "@/lib/analysis/excursions";
 import { computeRunningPnl } from "@/lib/analysis/running-pnl";
 import { getInitialReview } from "@/lib/ai/trade-review";
-
-const POS = "#17915f";
-const NEG = "#bd4640";
 
 export default async function TradeDetailPage({
   params,
@@ -126,72 +119,70 @@ export default async function TradeDetailPage({
   const money2 = (n: number | null) => (n == null ? "—" : `$${n.toFixed(2)}`);
 
   // Timing card — the excursion breakdown, or a plain note when there's no
-  // intraday history. Sits beside the P/L journey when we have one.
+  // intraday history. Defined once; it sits beside the P/L journey when we have
+  // one, otherwise full width.
   const timingBlock = excursions ? (
     <ExcursionCard excursions={excursions} symbol={trade.symbol} />
   ) : (
-    <Card sx={{ mb: 2, p: 2 }}>
-      <Chip label="Timing" size="small" sx={{ mb: 1, bgcolor: "action.hover" }} />
-      <Typography sx={{ fontSize: 12.5, lineHeight: 1.6, color: "text.secondary" }}>
+    <SurfaceCard className="mb-4 p-4">
+      <div className="mb-2">
+        <StatusChip tone="neutral">Timing</StatusChip>
+      </div>
+      <p className="text-[12.5px] leading-relaxed text-ink-soft">
         Measuring how far {trade.symbol} moved for and against this trade needs
         intraday price history with exact times.{" "}
         {trade.source !== "snaptrade"
           ? "CSV imports don't include times — connect your brokerage."
           : "It isn't available for this trade yet."}
-      </Typography>
-    </Card>
+      </p>
+    </SurfaceCard>
   );
 
-  const noFillTimes =
-    fills.length > 0 && !hasTimeOfDay(fills[0].executedAt);
-
   return (
-    <Box sx={{ px: { xs: 2, lg: 4 }, py: { xs: 2, lg: 3 }, maxWidth: 1160, mx: "auto" }}>
-      <Button
-        component={NextLink}
+    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
+      <Link
         href="/journal"
-        startIcon={<ChevronLeftRoundedIcon />}
-        color="inherit"
-        sx={{ mb: 1.5, ml: -1, color: "text.secondary", "&:hover": { color: "text.primary" } }}
+        className="mb-3 inline-flex items-center gap-0.5 text-[13px] font-semibold text-ink-soft transition-colors hover:text-ink"
       >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
         Journal
-      </Button>
+      </Link>
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 2.5 }}>
-        <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-            <Typography variant="h4" sx={{ fontSize: { xs: 24, lg: 26 } }}>
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[24px] font-semibold tracking-tight text-ink">
               {tradeLabel(trade)}
-            </Typography>
-            <Chip
-              label={trade.direction}
-              size="small"
-              sx={{
-                textTransform: "capitalize",
-                fontWeight: 600,
-                bgcolor: trade.direction === "long" ? "rgba(23,145,95,0.12)" : "rgba(189,70,64,0.12)",
-                color: trade.direction === "long" ? POS : NEG,
-              }}
-            />
+            </h1>
+            <StatusChip tone={trade.direction === "long" ? "pos" : "neg"}>
+              {trade.direction}
+            </StatusChip>
             <SourceBadge trade={trade} />
-            {trade.status === "open" && (
-              <Chip label="Open" size="small" color="info" variant="outlined" />
-            )}
-          </Box>
-          <Typography sx={{ mt: 0.75, fontSize: 13, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
+            {trade.status === "open" && <StatusChip tone="info">Open</StatusChip>}
+          </div>
+          <div className="tnum mt-1 text-[13px] text-ink-soft">
             {tradeSubtitle(trade)}
-          </Typography>
-        </Box>
-        <Box sx={{ textAlign: "right", flexShrink: 0 }}>
-          <Typography sx={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: up ? POS : NEG }}>
+          </div>
+        </div>
+        <div className="text-right">
+          <div
+            className={`tnum text-[24px] font-semibold ${
+              up ? "text-pos" : "text-neg"
+            }`}
+          >
             {usd(trade.netPnl, { sign: true })}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: "text.secondary" }}>realized</Typography>
-        </Box>
-      </Box>
+          </div>
+          <div className="text-[12px] text-ink-soft">realized</div>
+        </div>
+      </div>
 
-      {/* The glowing AI analysis launcher — opens the panel from the right. */}
-      {env.DEEPSEEK_API_KEY && initialReview && !("needsData" in initialReview) ? (
+      {/* The analysis launcher — a compact teaser that opens the full,
+          styled read as a panel sliding in from the right. */}
+      {env.DEEPSEEK_API_KEY &&
+      initialReview &&
+      !("needsData" in initialReview) ? (
         <TradeAnalysisDrawer
           tradeId={trade.id}
           initial={initialReview.review}
@@ -231,136 +222,175 @@ export default async function TradeDetailPage({
           }
         />
       ) : env.DEEPSEEK_API_KEY ? null : (
-        <Card sx={{ mb: 2, p: 2 }}>
-          <Chip label="Trade analysis" size="small" sx={{ mb: 1, bgcolor: "action.hover" }} />
-          <Typography sx={{ fontSize: 12.5, lineHeight: 1.6, color: "text.secondary" }}>
-            Plain-English analysis of each trade. Add a DeepSeek API key to enable it.
-          </Typography>
-        </Card>
+        <SurfaceCard className="mb-4 p-4">
+          <div className="mb-2">
+            <StatusChip tone="neutral">Trade analysis</StatusChip>
+          </div>
+          <p className="text-[12.5px] leading-relaxed text-ink-soft">
+            Plain-English analysis of each trade. Add a DeepSeek API key to
+            enable it.
+          </p>
+        </SurfaceCard>
       )}
 
-      {/* Mosaic — chart + P/L journey on the left, the numbers on the right. */}
-      <Box sx={{ display: { lg: "grid" }, gridTemplateColumns: { lg: "1.7fr 1fr" }, gap: 2.5, alignItems: "start" }}>
-        <Box sx={{ minWidth: 0 }}>
-          <TradeChartCard trade={trade} data={chartData} marketDataConfigured={marketDataConfigured} />
+      {/* Mosaic: two independent columns so cards stack to fill the height
+          rather than leaving a rigid row's worth of whitespace. Left holds the
+          big visuals; right stacks the numbers. */}
+      <div className="lg:flex lg:items-start lg:gap-5">
+        <div className="min-w-0 lg:flex-[1.7]">
+          <TradeChartCard
+            trade={trade}
+            data={chartData}
+            marketDataConfigured={marketDataConfigured}
+          />
           {running && <RunningPnlCard data={running} symbol={trade.symbol} />}
-        </Box>
+        </div>
 
-        <Box sx={{ minWidth: 0 }}>
-          <Card sx={{ mb: 2, px: 2 }}>
-            <StatRow label="Net ROI" value={trade.pnlPct == null ? "—" : `${trade.pnlPct >= 0 ? "+" : ""}${trade.pnlPct.toFixed(1)}%`} tone={trade.pnlPct == null ? undefined : trade.pnlPct >= 0 ? "pos" : "neg"} />
-            <StatRow label="Gross P/L" value={usd(trade.grossPnl ?? trade.netPnl, { sign: true })} />
-            <StatRow label="Fees" value={usd(trade.fees)} />
-            <StatRow label="Cost basis" value={usd(trade.cost)} />
-            <StatRow label="Proceeds" value={usd(trade.proceeds)} />
-            <StatRow label="Side" value={trade.direction === "long" ? "Long" : "Short"} />
-            <StatRow label={isOption ? "Contracts" : "Shares"} value={size > 0 ? size.toLocaleString() : "—"} />
-            <StatRow
-              label="R-multiple"
-              value={trade.rMultiple != null && trade.riskSource ? `${trade.rMultiple > 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R` : "Not set"}
-              tone={trade.rMultiple != null && trade.riskSource ? (trade.rMultiple >= 0 ? "pos" : "neg") : undefined}
-              muted={!(trade.rMultiple != null && trade.riskSource)}
-            />
-            <StatRow label="Avg entry" value={money2(trade.avgEntryPrice)} />
-            <StatRow label="Avg exit" value={money2(trade.avgExitPrice)} />
-            <StatRow label="Held" value={trade.holdingSeconds != null && hasTimeOfDay(trade.entryAt) ? holdingLabel(trade.holdingSeconds) : "—"} />
-            <StatRow label="Account" value={trade.brokerName ?? "CSV import"} />
-            <StatRow label="Opened" value={dayLabel(trade.entryAt)} sub={timeLabel(trade.entryAt)} />
-            <StatRow label="Closed" value={dayLabel(trade.exitAt)} sub={timeLabel(trade.exitAt)} last />
-          </Card>
+        <div className="min-w-0 lg:flex-1">
+          {/* Dense stats block — a label→value list that fits the sidebar cleanly. */}
+          <SurfaceCard className="mb-4 divide-y divide-line px-4">
+        <Stat
+          label="Net ROI"
+          value={
+            trade.pnlPct == null
+              ? "—"
+              : `${trade.pnlPct >= 0 ? "+" : ""}${trade.pnlPct.toFixed(1)}%`
+          }
+          tone={trade.pnlPct == null ? undefined : trade.pnlPct >= 0 ? "pos" : "neg"}
+        />
+        <Stat
+          label="Gross P/L"
+          value={usd(trade.grossPnl ?? trade.netPnl, { sign: true })}
+        />
+        <Stat label="Fees" value={usd(trade.fees)} />
+        <Stat label="Cost basis" value={usd(trade.cost)} />
+        <Stat label="Proceeds" value={usd(trade.proceeds)} />
+        <Stat label="Side" value={trade.direction === "long" ? "Long" : "Short"} />
+        <Stat
+          label={isOption ? "Contracts" : "Shares"}
+          value={size > 0 ? size.toLocaleString() : "—"}
+        />
+        <Stat
+          label="R-multiple"
+          value={
+            trade.rMultiple != null && trade.riskSource
+              ? `${trade.rMultiple > 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R`
+              : "Not set"
+          }
+          tone={
+            trade.rMultiple != null && trade.riskSource
+              ? trade.rMultiple >= 0
+                ? "pos"
+                : "neg"
+              : undefined
+          }
+          muted={!(trade.rMultiple != null && trade.riskSource)}
+        />
+        <Stat label="Avg entry" value={money2(trade.avgEntryPrice)} />
+        <Stat label="Avg exit" value={money2(trade.avgExitPrice)} />
+        <Stat
+          label="Held"
+          value={
+            trade.holdingSeconds != null && hasTimeOfDay(trade.entryAt)
+              ? holdingLabel(trade.holdingSeconds)
+              : "—"
+          }
+        />
+        <Stat
+          label="Account"
+          value={trade.brokerName ?? "CSV import"}
+        />
+        <Stat
+          label="Opened"
+          value={dayLabel(trade.entryAt)}
+          sub={timeLabel(trade.entryAt)}
+        />
+        <Stat
+          label="Closed"
+          value={dayLabel(trade.exitAt)}
+          sub={timeLabel(trade.exitAt)}
+        />
+        </SurfaceCard>
           {timingBlock}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       <TradeNotesCard tradeId={trade.id} initial={note} />
 
-      <Box sx={{ mb: 1, px: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "text.disabled" }}>
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
           Fills ({fills.length})
-        </Typography>
-        {noFillTimes && (
-          <Typography sx={{ fontSize: 11, color: "text.disabled" }}>
+        </span>
+        {/* Say why times are missing rather than showing a fake midnight. */}
+        {fills.length > 0 && !hasTimeOfDay(fills[0].executedAt) && (
+          <span className="text-[11px] text-ink-faint">
             · CSV exports don&apos;t include times
-          </Typography>
+          </span>
         )}
-      </Box>
-      <Card sx={{ mb: 3, overflow: "hidden" }}>
-        {fills.map((f, i) => (
-          <Box
-            key={f.id}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              px: 2,
-              py: 1.25,
-              borderBottom: i < fills.length - 1 ? "1px solid" : 0,
-              borderColor: "divider",
-            }}
-          >
-            <Typography sx={{ width: 48, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
-              {f.code}
-            </Typography>
-            <Typography sx={{ flexGrow: 1, fontSize: 12, color: "text.disabled", fontVariantNumeric: "tabular-nums" }}>
-              {dateTimeLabel(f.executedAt)}
-            </Typography>
-            <Typography sx={{ width: 48, textAlign: "right", fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
-              {f.quantity}
-            </Typography>
-            <Typography sx={{ width: 64, textAlign: "right", fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
-              {f.price != null ? `$${f.price}` : "—"}
-            </Typography>
-            <Typography sx={{ width: 96, textAlign: "right", fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: f.amount >= 0 ? POS : NEG }}>
-              {usd(f.amount, { sign: true })}
-            </Typography>
-          </Box>
-        ))}
-      </Card>
-    </Box>
+      </div>
+      <SurfaceCard className="mb-6 overflow-hidden">
+        <div className="divide-y divide-line">
+          {fills.map((f) => (
+            <div key={f.id} className="flex items-center gap-2 px-4 py-2.5">
+              <span className="w-12 shrink-0 text-[12px] font-bold text-ink-soft">
+                {f.code}
+              </span>
+              <span className="tnum flex-1 text-[12px] text-ink-faint">
+                {dateTimeLabel(f.executedAt)}
+              </span>
+              <span className="tnum w-12 text-right text-[12px] text-ink-soft">
+                {f.quantity}
+              </span>
+              <span className="tnum w-16 text-right text-[12px] text-ink-soft">
+                {f.price != null ? `$${f.price}` : "—"}
+              </span>
+              <span
+                className={`tnum w-24 text-right text-[12px] font-semibold ${
+                  f.amount >= 0 ? "text-pos" : "text-neg"
+                }`}
+              >
+                {usd(f.amount, { sign: true })}
+              </span>
+            </div>
+          ))}
+        </div>
+      </SurfaceCard>
+    </main>
   );
 }
 
-function StatRow({
+function Stat({
   label,
   value,
   sub,
   tone,
   muted,
-  last,
 }: {
   label: string;
   value: string;
   sub?: string | null;
   tone?: "pos" | "neg";
   muted?: boolean;
-  last?: boolean;
 }) {
-  const color = tone === "pos" ? POS : tone === "neg" ? NEG : muted ? "text.disabled" : "text.primary";
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 1.5,
-        py: 1.25,
-        borderBottom: last ? 0 : "1px solid",
-        borderColor: "divider",
-      }}
-    >
-      <Typography sx={{ flexShrink: 0, fontSize: 12, fontWeight: 500, color: "text.secondary" }}>
-        {label}
-      </Typography>
-      <Box sx={{ minWidth: 0, textAlign: "right" }}>
-        <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 600, fontVariantNumeric: "tabular-nums", color }}>
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span className="shrink-0 text-[12px] font-medium text-ink-soft">{label}</span>
+      <span className="min-w-0 text-right">
+        <span
+          className={`tnum text-[13.5px] font-semibold ${
+            tone === "pos"
+              ? "text-pos"
+              : tone === "neg"
+              ? "text-neg"
+              : muted
+              ? "text-ink-faint"
+              : "text-ink"
+          }`}
+        >
           {value}
-        </Typography>
-        {sub && (
-          <Typography component="span" sx={{ ml: 0.75, fontSize: 11, color: "text.disabled", fontVariantNumeric: "tabular-nums" }}>
-            {sub}
-          </Typography>
-        )}
-      </Box>
-    </Box>
+        </span>
+        {sub && <span className="tnum ml-1.5 text-[11px] text-ink-faint">{sub}</span>}
+      </span>
+    </div>
   );
 }

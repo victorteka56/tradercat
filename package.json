@@ -15,13 +15,6 @@
     "db:setup": "node scripts/apply-sql.mjs"
   },
   "dependencies": {
-    "@emotion/cache": "^11.14.0",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^6.5.0",
-    "@mui/material": "^6.5.0",
-    "@mui/material-nextjs": "^6.5.0",
-    "@mui/x-charts": "^7.29.1",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.109.0",
     "drizzle-orm": "^0.45.2",

@@ -41,21 +41,28 @@ export function PieCard({
     series: [
       {
         type: "pie",
-        radius: ["58%", "82%"],
+        radius: ["57%", "84%"],
         center: ["50%", "50%"],
         avoidLabelOverlap: false,
         label: { show: false },
         labelLine: { show: false },
+        itemStyle: {
+          borderColor: C.surface,
+          borderWidth: 3,
+          borderRadius: 7,
+          shadowBlur: 12,
+          shadowColor: "rgba(20,24,31,0.12)",
+        },
+        emphasis: {
+          scale: true,
+          scaleSize: 6,
+          itemStyle: { shadowBlur: 22, shadowColor: "rgba(20,24,31,0.24)" },
+        },
         data: buckets.map((b) => ({
           value: b.trades,
           name: b.label,
           b,
-          itemStyle: {
-            color: b.pnl >= 0 ? C.pos : C.neg,
-            borderColor: C.surface,
-            borderWidth: 3,
-            borderRadius: 6,
-          },
+          itemStyle: { color: b.pnl >= 0 ? C.pos : C.neg },
         })),
       },
     ],

@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
-import { EChart, C, hGrad, tooltip } from "./echart";
+import { EChart, C, hGrad, tooltip, barShadow, emphasisBar } from "./echart";
 import { CardHead } from "./CardHead";
 
 /**
@@ -64,7 +64,9 @@ export function DivergingBar({
     series: [
       {
         type: "bar",
-        barWidth: 16,
+        barWidth: 18,
+        itemStyle: { ...barShadow },
+        emphasis: emphasisBar,
         data: rows.map((r) => {
           const v = r.b?.pnl ?? 0;
           const pos = v >= 0;
@@ -74,7 +76,7 @@ export function DivergingBar({
             b: r.b,
             itemStyle: {
               color: r.b ? hGrad(pos ? C.pos : C.neg) : C.line,
-              borderRadius: pos ? [0, 6, 6, 0] : [6, 0, 0, 6],
+              borderRadius: pos ? [0, 7, 7, 0] : [7, 0, 0, 7],
             },
           };
         }),

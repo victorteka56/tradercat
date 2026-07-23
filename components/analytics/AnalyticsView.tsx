@@ -1,12 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { EquityPanel } from "@/components/journal/EquityPanel";
 import { keyFindingsCards } from "@/components/analytics/KeyFindings";
 import {
@@ -22,38 +18,6 @@ import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics"
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd } from "@/lib/format";
 
-const POS = "#17915f";
-const NEG = "#bd4640";
-
-function Kpi({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "pos" | "neg";
-}) {
-  const color = tone === "pos" ? POS : tone === "neg" ? NEG : "text.primary";
-  return (
-    <Card>
-      <CardContent>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary" }}>
-          {label}
-        </Typography>
-        <Typography sx={{ mt: 0.5, fontSize: 22, fontWeight: 700, fontVariantNumeric: "tabular-nums", color }}>
-          {value}
-        </Typography>
-        {sub && <Typography sx={{ mt: 0.25, fontSize: 12, color: "text.secondary" }}>{sub}</Typography>}
-      </CardContent>
-    </Card>
-  );
-}
-
-const cell = { mb: 2, breakInside: "avoid" } as const;
-
 /**
  * The whole analytics page, driven by one date-range filter. Everything —
  * insights, KPIs, equity curve, every breakdown — recomputes client-side from
@@ -61,7 +25,7 @@ const cell = { mb: 2, breakInside: "avoid" } as const;
  */
 export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
   const [range, setRange] = useState<RangeKey>("ALL");
-  const now = useMemo(() => Date.now(), []);
+  const now = Date.now();
 
   const filtered = useMemo(() => {
     if (range === "ALL") return trades;
@@ -71,6 +35,7 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
 
   const a = useMemo(() => computeAnalytics(filtered), [filtered]);
 
+  // Full series (unfiltered) — the equity panel windows it by the same range.
   const series = useMemo(
     () =>
       trades
@@ -85,123 +50,135 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
   const findings = a ? keyFindingsCards(a) : [];
 
   return (
-    <Box sx={{ px: { xs: 2, lg: 4 }, py: { xs: 2, lg: 3 }, maxWidth: 1160, mx: "auto" }}>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-        }}
-      >
-        <Typography variant="h4" sx={{ fontSize: { xs: 26, lg: 30 } }}>
+    <main className="px-4 pt-14 lg:mx-auto lg:max-w-[1160px] lg:pt-10">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[24px] font-semibold tracking-tight text-ink lg:text-[28px]">
           Analytics
-        </Typography>
-        <ToggleButtonGroup
-          value={range}
-          exclusive
-          size="small"
-          onChange={(_, v: RangeKey | null) => v && setRange(v)}
-          sx={{
-            bgcolor: "action.hover",
-            borderRadius: 999,
-            p: 0.25,
-            "& .MuiToggleButton-root": {
-              border: 0,
-              borderRadius: "999px !important",
-              px: 1.5,
-              py: 0.5,
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: 12,
-              color: "text.secondary",
-              "&.Mui-selected": {
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                "&:hover": { bgcolor: "primary.main" },
-              },
-            },
-          }}
-        >
+        </h1>
+        <div className="flex shrink-0 gap-0.5 rounded-full border border-line bg-surface-2/60 p-0.5">
           {RANGES.map((r) => (
-            <ToggleButton key={r} value={r}>
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                range === r ? "bg-ink text-white" : "text-ink-soft hover:text-ink"
+              }`}
+            >
               {r}
-            </ToggleButton>
+            </button>
           ))}
-        </ToggleButtonGroup>
-      </Box>
+        </div>
+      </header>
 
       {!a ? (
-        <Card>
-          <CardContent sx={{ textAlign: "center", py: 6 }}>
-            <Typography variant="h6" sx={{ fontSize: 16 }}>
-              No closed trades {RANGE_LABEL[range]}
-            </Typography>
-            <Typography sx={{ mt: 1, fontSize: 13, color: "text.secondary" }}>
-              Try a wider range — your full history is under ALL.
-            </Typography>
-          </CardContent>
-        </Card>
+        <SurfaceCard className="p-8 text-center">
+          <h2 className="text-[16px] font-semibold text-ink">
+            No closed trades {RANGE_LABEL[range]}
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-[320px] text-[13px] text-ink-soft">
+            Try a wider range — your full history is under ALL.
+          </p>
+        </SurfaceCard>
       ) : (
         <>
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, mb: 2 }}>
-            <Kpi label="Win rate" value={`${a.summary.winRate}%`} sub={`${a.summary.winners}W · ${a.summary.losers}L`} />
-            <Kpi
+          {/* Deeper than the Home summary — risk, reward quality, behaviour. */}
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MetricCard
+              label="Win rate"
+              value={`${a.summary.winRate}%`}
+              sub={`${a.summary.winners}W · ${a.summary.losers}L`}
+            />
+            <MetricCard
               label="Payoff ratio"
               value={a.summary.payoffRatio != null ? `${a.summary.payoffRatio.toFixed(2)}×` : "—"}
               tone={a.summary.payoffRatio != null && a.summary.payoffRatio >= 1 ? "pos" : "neg"}
               sub="avg win ÷ avg loss"
             />
-            <Kpi label="Max drawdown" value={a.summary.maxDrawdown > 0 ? usd(-a.summary.maxDrawdown) : "—"} tone="neg" sub="deepest dip" />
-            <Kpi label="Avg hold" value={fmtHold(a.summary.avgHoldDays)} sub="per trade" />
-          </Box>
+            <MetricCard
+              label="Max drawdown"
+              value={a.summary.maxDrawdown > 0 ? usd(-a.summary.maxDrawdown) : "—"}
+              tone="neg"
+              sub="deepest dip"
+            />
+            <MetricCard
+              label="Avg hold"
+              value={fmtHold(a.summary.avgHoldDays)}
+              sub="per trade"
+            />
+          </div>
 
-          <Box sx={{ mb: 2 }}>
+          <div className="mb-4">
             <EquityPanel series={series} title="Equity" controlledRange={range} />
-          </Box>
+          </div>
 
           {findings.length > 0 && (
-            <Box sx={{ mb: 1.5, px: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography sx={{ fontSize: 14, fontWeight: 600 }}>Key findings</Typography>
-              <Typography sx={{ fontSize: 11.5, color: "text.disabled" }}>how you actually trade</Typography>
-            </Box>
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <h2 className="text-[14px] font-semibold text-ink">Key findings</h2>
+              <span className="text-[11.5px] text-ink-faint">how you actually trade</span>
+            </div>
           )}
 
           {/* One mosaic — behavioural findings first, then the breakdowns, all
               packed into two balanced columns so no card strands a gap. */}
-          <Box sx={{ columnGap: 2, columnCount: { xs: 1, lg: 2 }, pb: 1 }}>
+          <div className="gap-3 pb-2 lg:columns-2">
             {findings.map((card, i) => (
-              <Box key={`kf-${i}`} sx={cell}>
+              <div key={`kf-${i}`} className="mb-3 break-inside-avoid">
                 {card}
-              </Box>
+              </div>
             ))}
-            <Box sx={cell}>
-              <PieCard title="Options vs stocks" question="Which instrument makes you money?" buckets={a.byType} href="/analytics/type" />
-            </Box>
-            <Box sx={cell}>
-              <DivergingBar title="Long vs short" question="Bullish bets (longs & calls) vs bearish (shorts & puts)." left={long} right={short} href="/analytics/direction" />
-            </Box>
-            <Box sx={cell}>
-              <BarBreakdown title="By day of week" question="When do you trade best?" buckets={a.byDayOfWeek} href="/analytics/days" />
-            </Box>
-            <Box sx={cell}>
-              <ColumnChart title="By hold length" question="Do longer holds pay off?" buckets={a.byHold} emptyLabel="Needs execution times — connect your brokerage." href="/analytics/hold" />
-            </Box>
-            <Box sx={cell}>
+            <div className="mb-3 break-inside-avoid">
+              <PieCard
+                title="Options vs stocks"
+                question="Which instrument makes you money?"
+                buckets={a.byType}
+                href="/analytics/type"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <DivergingBar
+                title="Long vs short"
+                question="Bullish bets (longs & calls) vs bearish (shorts & puts)."
+                left={long}
+                right={short}
+                href="/analytics/direction"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <BarBreakdown
+                title="By day of week"
+                question="When do you trade best?"
+                buckets={a.byDayOfWeek}
+                href="/analytics/days"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <ColumnChart
+                title="By hold length"
+                question="Do longer holds pay off?"
+                buckets={a.byHold}
+                emptyLabel="Needs execution times — connect your brokerage."
+                href="/analytics/hold"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
               <ActivityChart monthly={a.monthly} href="/analytics/activity" />
-            </Box>
-            <Box sx={cell}>
-              <TreemapChart title="Symbols" question="Where you make and lose the most — tile size is P/L." buckets={a.symbols} href="/analytics/symbols" />
-            </Box>
-            <Box sx={cell}>
+            </div>
+            <div className="mb-3 break-inside-avoid">
+              <TreemapChart
+                title="Symbols"
+                question="Where you make and lose the most — tile size is P/L."
+                buckets={a.symbols}
+                href="/analytics/symbols"
+              />
+            </div>
+            <div className="mb-3 break-inside-avoid">
               <DistributionCard buckets={a.distribution} />
-            </Box>
-          </Box>
+            </div>
+          </div>
+          <div className="mb-6" />
         </>
       )}
-    </Box>
+    </main>
   );
 }
 

@@ -44,15 +44,22 @@ export function ActivityChart({ monthly, href }: { monthly: Bucket[]; href?: str
     series: [
       {
         type: "line",
-        smooth: 0.35,
-        symbolSize: 8,
+        smooth: 0.4,
+        symbolSize: 9,
         data: monthly.map((b) => ({
           value: b.trades,
           b,
           itemStyle: { color: b.pnl >= 0 ? C.pos : C.neg, borderColor: C.surface, borderWidth: 2 },
         })),
-        lineStyle: { color: C.info, width: 2 },
+        lineStyle: {
+          color: C.info,
+          width: 2.5,
+          shadowBlur: 10,
+          shadowColor: C.info + "55",
+          shadowOffsetY: 4,
+        },
         areaStyle: { color: areaGrad(C.info) },
+        emphasis: { scale: 1.5, itemStyle: { shadowBlur: 12, shadowColor: "rgba(20,24,31,0.2)" } },
       },
     ],
   };
@@ -67,7 +74,7 @@ export function ActivityChart({ monthly, href }: { monthly: Bucket[]; href?: str
       {monthly.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">No dated trades yet.</div>
       ) : (
-        <EChart option={option} height={180} />
+        <EChart option={option} height={200} />
       )}
     </SurfaceCard>
   );

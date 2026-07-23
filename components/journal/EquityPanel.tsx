@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { RealizedPoint } from "@/lib/queries/journal";
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd, usdCompact } from "@/lib/format";
+import { EChart, C, areaGrad, tooltip } from "@/components/analytics/echart";
 
 /**
  * Brokerage-style equity panel. A date-range toggle (24H / 1W / 1M / YTD / ALL)
@@ -23,10 +24,6 @@ const fmtDay = (t: number) =>
     year: "numeric",
   });
 
-const W = 600;
-const H = 180;
-const PAD = 10;
-
 export function EquityPanel({
   series,
   title = "Equity curve",
@@ -40,9 +37,7 @@ export function EquityPanel({
   const range = controlledRange ?? internalRange;
   const setRange = setInternalRange;
   const showTabs = controlledRange == null;
-  const [hover, setHover] = useState<number | null>(null);
-  const svgWrap = useRef<HTMLDivElement>(null);
-  const now = Date.now();
+  const now = useMemo(() => Date.now(), []);
 
   const model = useMemo(() => {
     const from = windowStart(range, now);
@@ -56,7 +51,7 @@ export function EquityPanel({
     // Cumulative equity points: anchor at the window's opening level, then step
     // with each realized trade.
     const anchorT = from === -Infinity ? (series[0]?.t ?? now) : from;
-    const pts: { t: number; v: number }[] = [{ t: anchorT, v: baseline }];
+    const pts: [number, number][] = [[anchorT, baseline]];
     let cum = baseline;
     let rangePnl = 0;
     let winners = 0;
@@ -64,43 +59,27 @@ export function EquityPanel({
       cum += p.pnl;
       rangePnl += p.pnl;
       if (p.pnl > 0) winners++;
-      pts.push({ t: p.t, v: cum });
+      pts.push([p.t, cum]);
     }
-    // Extend the line to "now" for bounded windows so it spans the full width;
-    // a window with no trades still draws a flat baseline.
-    if (range !== "ALL" || pts.length < 2) pts.push({ t: now, v: cum });
+    if (range !== "ALL" || pts.length < 2) pts.push([now, cum]);
 
-    const vs = pts.map((p) => p.v);
-    const min = Math.min(...vs);
-    const max = Math.max(...vs);
-    const t0 = pts[0].t;
-    const t1 = pts[pts.length - 1].t;
-
+    const vs = pts.map((p) => p[1]);
     return {
       pts,
-      min,
-      max,
-      t0,
-      t1,
+      min: Math.min(...vs),
+      max: Math.max(...vs),
       rangePnl,
       count: inRange.length,
       winners,
       endEquity: cum,
+      startEquity: pts[0][1],
     };
   }, [series, range, now]);
 
   if (series.length === 0) {
     return (
       <SurfaceCard className="p-4">
-        <PanelHeader
-          title={title}
-          range={range}
-          setRange={setRange}
-          showTabs={showTabs}
-          rangePnl={0}
-          count={0}
-          winners={0}
-        />
+        <PanelHeader title={title} range={range} setRange={setRange} showTabs={showTabs} rangePnl={0} count={0} winners={0} />
         <div className="flex h-[140px] items-center justify-center text-[13px] text-ink-faint">
           No realized trades yet.
         </div>
@@ -108,151 +87,73 @@ export function EquityPanel({
     );
   }
 
-  const { pts, min, max, t0, t1 } = model;
-  const span = max - min || 1;
-  const tSpan = t1 - t0 || 1;
-  const x = (t: number) => ((t - t0) / tSpan) * W;
-  const y = (v: number) => H - ((v - min) / span) * (H - PAD * 2) - PAD;
+  const up = model.endEquity >= model.startEquity;
+  const color = up ? C.pos : C.neg;
+  const zeroInView = model.min < 0 && model.max > 0;
 
-  const line = pts.map((p) => `${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
-  const area = `0,${H} ${line} ${W},${H}`;
-  const up = model.endEquity >= model.pts[0].v;
-  const color = up ? "var(--pos)" : "var(--neg)";
-  const zeroInView = min < 0 && max > 0;
-
-  const onMove = (clientX: number) => {
-    const el = svgWrap.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    const targetT = t0 + frac * tSpan;
-    // nearest point by time
-    let best = 0;
-    let bestD = Infinity;
-    for (let i = 0; i < pts.length; i++) {
-      const d = Math.abs(pts[i].t - targetT);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    }
-    setHover(best);
+  const option = {
+    grid: { left: 4, right: 12, top: 12, bottom: 4, containLabel: true },
+    tooltip: {
+      ...tooltip,
+      trigger: "axis",
+      axisPointer: { type: "line", lineStyle: { color: C.inkFaint, width: 1, type: "dashed" } },
+      formatter: (ps: { data: [number, number] }[]) => {
+        const [t, v] = ps[0].data;
+        const col = v >= 0 ? C.pos : C.neg;
+        return `<div style="color:${C.inkFaint};font-size:11px">${fmtDay(t)}</div>
+          <div style="color:${col};font-weight:700;font-size:13px;margin-top:1px">${usd(v, { sign: true })}</div>`;
+      },
+    },
+    xAxis: {
+      type: "time",
+      boundaryGap: false,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: C.inkFaint,
+        fontSize: 10,
+        hideOverlap: true,
+        formatter: (val: number) =>
+          new Date(val).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      scale: true,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: C.inkFaint, fontSize: 10, formatter: (v: number) => usdCompact(v) },
+      splitLine: { show: true, lineStyle: { color: C.line, type: "dashed", opacity: 0.7 } },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: 0.26,
+        showSymbol: false,
+        data: model.pts,
+        lineStyle: { color, width: 2.4, shadowBlur: 12, shadowColor: color + "55", shadowOffsetY: 6 },
+        areaStyle: { color: areaGrad(color) },
+        emphasis: { focus: "series", lineStyle: { width: 2.4 } },
+        markLine: zeroInView
+          ? {
+              silent: true,
+              symbol: "none",
+              lineStyle: { color: C.inkFaint, opacity: 0.4, type: "dashed", width: 1 },
+              data: [{ yAxis: 0 }],
+              label: { show: false },
+            }
+          : undefined,
+        z: 3,
+      },
+    ],
   };
-
-  const hp = hover != null ? pts[hover] : null;
-  const hoverLeftPct = hp ? (x(hp.t) / W) * 100 : 0;
 
   return (
     <SurfaceCard className="p-4">
-      <PanelHeader
-        title={title}
-        range={range}
-        setRange={setRange}
-        showTabs={showTabs}
-        rangePnl={model.rangePnl}
-        count={model.count}
-        winners={model.winners}
-      />
-
-      <div
-        ref={svgWrap}
-        className="relative mt-3 select-none"
-        onMouseMove={(e) => onMove(e.clientX)}
-        onMouseLeave={() => setHover(null)}
-        onTouchStart={(e) => onMove(e.touches[0].clientX)}
-        onTouchMove={(e) => onMove(e.touches[0].clientX)}
-      >
-        {/* y-axis value markers */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex flex-col justify-between py-0.5 text-[10px] font-semibold text-ink-faint">
-          <span className="tnum rounded bg-surface/70 px-1">{usdCompact(max)}</span>
-          <span className="tnum rounded bg-surface/70 px-1">{usdCompact(min)}</span>
-        </div>
-
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="none"
-          className="h-[180px] w-full"
-        >
-          <defs>
-            <linearGradient id="eqpanelfill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.16" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {zeroInView && (
-            <line
-              x1="0"
-              x2={W}
-              y1={y(0)}
-              y2={y(0)}
-              stroke="var(--ink-faint)"
-              strokeOpacity="0.35"
-              strokeWidth="1"
-              strokeDasharray="3 4"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-
-          <polygon points={area} fill="url(#eqpanelfill)" />
-          <polyline
-            points={line}
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-
-          {hp && (
-            <>
-              <line
-                x1={x(hp.t)}
-                x2={x(hp.t)}
-                y1="0"
-                y2={H}
-                stroke="var(--ink-faint)"
-                strokeOpacity="0.5"
-                strokeWidth="1"
-                vectorEffect="non-scaling-stroke"
-              />
-              <circle
-                cx={x(hp.t)}
-                cy={y(hp.v)}
-                r="3.5"
-                fill={color}
-                stroke="var(--surface)"
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-              />
-            </>
-          )}
-        </svg>
-
-        {/* hover readout */}
-        {hp && (
-          <div
-            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2"
-            style={{ left: `${hoverLeftPct}%` }}
-          >
-            <div className="whitespace-nowrap rounded-lg border border-line bg-surface px-2 py-1 text-center shadow-card">
-              <div
-                className={`tnum text-[12.5px] font-semibold ${
-                  hp.v >= 0 ? "text-pos" : "text-neg"
-                }`}
-              >
-                {usd(hp.v, { sign: true })}
-              </div>
-              <div className="text-[10px] text-ink-faint">{fmtDay(hp.t)}</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-2 flex justify-between text-[11px] text-ink-faint">
-        <span>{fmtDay(t0)}</span>
-        <span>{fmtDay(t1)}</span>
+      <PanelHeader title={title} range={range} setRange={setRange} showTabs={showTabs} rangePnl={model.rangePnl} count={model.count} winners={model.winners} />
+      <div className="mt-2">
+        <EChart option={option} height={200} />
       </div>
     </SurfaceCard>
   );

@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
-import { EChart, C, vGrad, tooltip } from "./echart";
+import { EChart, C, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
 import { CardHead } from "./CardHead";
 
 /** Diverging column chart — P/L per bucket, green up / red down from zero. */
@@ -51,7 +51,9 @@ export function ColumnChart({
     series: [
       {
         type: "bar",
-        barWidth: "52%",
+        barWidth: "54%",
+        itemStyle: { ...barShadow },
+        emphasis: emphasisBar,
         data: buckets.map((b) => {
           const pos = b.pnl >= 0;
           return {
@@ -59,7 +61,7 @@ export function ColumnChart({
             b,
             itemStyle: {
               color: vGrad(pos ? C.pos : C.neg),
-              borderRadius: pos ? [5, 5, 0, 0] : [0, 0, 5, 5],
+              borderRadius: pos ? [6, 6, 0, 0] : [0, 0, 6, 6],
             },
           };
         }),
@@ -80,7 +82,7 @@ export function ColumnChart({
       {buckets.length === 0 ? (
         <div className="mt-3 text-[12.5px] text-ink-faint">{emptyLabel}</div>
       ) : (
-        <EChart option={option} height={190} />
+        <EChart option={option} height={212} />
       )}
     </SurfaceCard>
   );
