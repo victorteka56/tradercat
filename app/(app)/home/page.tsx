@@ -1,23 +1,25 @@
 import Link from "next/link";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { StatusChip } from "@/components/ui/StatusChip";
 import { JournalTradeRow } from "@/components/journal/JournalTradeRow";
 import { EquityPanel } from "@/components/journal/EquityPanel";
+import { PositionsNews } from "@/components/home/PositionsNews";
 import { requireUser } from "@/lib/auth";
 import {
   getJournalStats,
   getRealizedSeries,
   getTrades,
 } from "@/lib/queries/journal";
+import { getCachedPositionsNews } from "@/lib/news";
 import { usd } from "@/lib/format";
 
 export default async function HomePage() {
   const user = await requireUser();
-  const [stats, recent, series] = await Promise.all([
+  const [stats, recent, series, news] = await Promise.all([
     getJournalStats(user.id),
     getTrades(user.id, { limit: 5 }),
     getRealizedSeries(user.id),
+    getCachedPositionsNews(user.id),
   ]);
 
   const name = user.displayName?.split(" ")[0] ?? "there";
@@ -92,16 +94,11 @@ export default async function HomePage() {
               />
             </div>
 
-            <SurfaceCard className="p-4">
-              <div className="mb-1.5">
-                <StatusChip tone="neutral">Journal insight</StatusChip>
-              </div>
-              <p className="text-[13px] leading-relaxed text-ink-soft">
-                Insights arrive once excursions are computed from intraday price
-                history. TraderCat explains your numbers — it won&apos;t invent
-                them.
-              </p>
-            </SurfaceCard>
+            <PositionsNews
+              initial={news.articles}
+              symbols={news.symbols}
+              stale={news.stale}
+            />
           </div>
 
           <div className="mt-4 space-y-2 lg:mt-0">

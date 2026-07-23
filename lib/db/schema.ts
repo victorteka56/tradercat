@@ -238,6 +238,22 @@ export const priceCandles = pgTable(
   }),
 );
 
+/**
+ * Cached ticker news, keyed by the underlying symbol and SHARED across every
+ * user — AAPL news is identical for everyone holding it, so we fetch once per
+ * symbol and serve everyone from here. `demand` (distinct current holders) and
+ * `fetchedAt` drive refresh priority; the whole point is minimal upstream calls.
+ */
+export const symbolNews = pgTable("symbol_news", {
+  symbol: text("symbol").primaryKey(),
+  /** Normalised articles, newest first. Null until the first fetch. */
+  articles: jsonb("articles"),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+  /** Distinct users currently holding it — refresh priority for a future cron. */
+  demand: integer("demand").notNull().default(0),
+  error: text("error"),
+});
+
 /* -------------------------------- profiles -------------------------------- */
 
 export const profiles = pgTable("profiles", {
