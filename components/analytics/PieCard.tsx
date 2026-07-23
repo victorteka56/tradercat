@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
-import { EChart, C, tooltip } from "./echart";
+import { EChart, C, CAT, tooltip } from "./echart";
 import { CardHead } from "./CardHead";
 
 /**
@@ -58,11 +58,11 @@ export function PieCard({
           scaleSize: 6,
           itemStyle: { shadowBlur: 22, shadowColor: "rgba(20,24,31,0.24)" },
         },
-        data: buckets.map((b) => ({
+        data: buckets.map((b, i) => ({
           value: b.trades,
           name: b.label,
           b,
-          itemStyle: { color: b.pnl >= 0 ? C.pos : C.neg },
+          itemStyle: { color: CAT[i % CAT.length] },
         })),
       },
     ],
@@ -80,11 +80,11 @@ export function PieCard({
             <EChart option={option} height={168} />
           </div>
           <div className="min-w-0 flex-1 space-y-2">
-            {buckets.map((b) => (
+            {buckets.map((b, i) => (
               <div key={b.key} className="flex items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: b.pnl >= 0 ? C.pos : C.neg }}
+                  style={{ background: CAT[i % CAT.length] }}
                 />
                 <span className="flex-1 truncate text-[13px] font-semibold text-ink">
                   {b.label}

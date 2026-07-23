@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
-import { EChart, C, areaGrad, tooltip } from "./echart";
+import { EChart, C, PALETTE, areaGrad, tooltip } from "./echart";
 import { CardHead } from "./CardHead";
 
 /**
@@ -52,13 +52,13 @@ export function ActivityChart({ monthly, href }: { monthly: Bucket[]; href?: str
           itemStyle: { color: b.pnl >= 0 ? C.pos : C.neg, borderColor: C.surface, borderWidth: 2 },
         })),
         lineStyle: {
-          color: C.info,
+          color: PALETTE.amber,
           width: 2.5,
           shadowBlur: 10,
-          shadowColor: C.info + "55",
+          shadowColor: PALETTE.amber + "55",
           shadowOffsetY: 4,
         },
-        areaStyle: { color: areaGrad(C.info) },
+        areaStyle: { color: areaGrad(PALETTE.amber) },
         emphasis: { scale: 1.5, itemStyle: { shadowBlur: 12, shadowColor: "rgba(20,24,31,0.2)" } },
       },
     ],

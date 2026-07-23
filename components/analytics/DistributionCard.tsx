@@ -2,7 +2,7 @@
 
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { DistBucket } from "@/lib/analysis/analytics";
-import { EChart, C, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
+import { EChart, C, PALETTE, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
 
 /** Histogram of per-trade P/L — the shape of your outcomes, losses left. */
 export function DistributionCard({ buckets }: { buckets: DistBucket[] }) {
@@ -44,7 +44,7 @@ export function DistributionCard({ buckets }: { buckets: DistBucket[] }) {
           value: b.count,
           d: b,
           itemStyle: {
-            color: vGrad(b.tone === "pos" ? C.pos : b.tone === "neg" ? C.neg : C.inkFaint),
+            color: vGrad(PALETTE.teal),
             borderRadius: [6, 6, 0, 0],
           },
         })),

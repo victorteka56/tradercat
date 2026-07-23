@@ -3,7 +3,7 @@
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import type { Bucket } from "@/lib/analysis/analytics";
 import { usd } from "@/lib/format";
-import { EChart, C, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
+import { EChart, C, PALETTE, vGrad, tooltip, barShadow, emphasisBar } from "./echart";
 import { CardHead } from "./CardHead";
 
 /** Diverging column chart — P/L per bucket, green up / red down from zero. */
@@ -60,7 +60,7 @@ export function ColumnChart({
             value: b.pnl,
             b,
             itemStyle: {
-              color: vGrad(pos ? C.pos : C.neg),
+              color: vGrad(PALETTE.violet),
               borderRadius: pos ? [6, 6, 0, 0] : [0, 0, 6, 6],
             },
           };
