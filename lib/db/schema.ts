@@ -126,7 +126,14 @@ export const brokerageAccounts = pgTable(
     number: text("number"),
     institutionName: text("institution_name"),
     currency: text("currency"),
+    /**
+     * TOTAL market value of the account — cash plus every holding — exactly as
+     * the brokerage reports it. This is NOT spendable cash; adding it to the
+     * positions total would count every holding twice.
+     */
     balance: numeric("balance", { precision: 20, scale: 2 }),
+    /** Settleable cash only. Can be negative on a margin account. */
+    cash: numeric("cash", { precision: 20, scale: 2 }),
     /** SnapTrade sync_status.transactions.initial_sync_completed. */
     transactionsSynced: timestamp("transactions_synced_at", { withTimezone: true }),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
@@ -159,6 +166,11 @@ export const positions = pgTable(
     optionType: optionTypeEnum("option_type"),
     strike: numeric("strike", { precision: 20, scale: 8 }),
     expiry: timestamp("expiry", { withTimezone: true }),
+    /**
+     * SnapTrade security type code — `cs` common stock, `crypto`, `et` ETF, etc.
+     * Drives the asset-class split; `kind` alone can't tell crypto from equity.
+     */
+    securityType: text("security_type"),
     quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(),
     averageCost: numeric("average_cost", { precision: 20, scale: 8 }),
     lastPrice: numeric("last_price", { precision: 20, scale: 8 }),

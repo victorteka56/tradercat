@@ -65,7 +65,8 @@ export interface TradeDraft {
   avgExitPrice: number | null;
   cost: number;
   proceeds: number;
-  netPnl: number;
+  /** Realized P/L. Null while the position is open — nothing is realized yet. */
+  netPnl: number | null;
   /** Missing opening fills → cost basis unknown → P/L unreliable. */
   incomplete: boolean;
   entryAt: Date | null;
@@ -262,7 +263,10 @@ export function reconstructTrades(
       avgExitPrice: closeQtyPriced ? round(closeNotional / closeQtyPriced) : null,
       cost: round(cost, 2),
       proceeds: round(proceeds, 2),
-      netPnl: round(netPnl, 2),
+      // An open position has realized nothing yet. Its cash flow so far is just
+      // the money paid in, which as a "P/L" would read as a total loss — so it
+      // stays null until the position is actually closed.
+      netPnl: status === "open" ? null : round(netPnl, 2),
       incomplete,
       entryAt,
       exitAt: status === "closed" ? exitAt : null,

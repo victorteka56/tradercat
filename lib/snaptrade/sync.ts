@@ -10,6 +10,7 @@ import {
 import { getCreds, snaptrade } from "./client";
 import { mapActivitiesToFills } from "./activities";
 import { ingestBrokerageFills, runReconstruction } from "@/lib/import/pipeline";
+import { reconcileHoldings } from "./reconcile";
 
 const n = (v: unknown): string | null =>
   v === null || v === undefined || Number.isNaN(Number(v)) ? null : String(v);
@@ -22,6 +23,10 @@ export interface SyncOutcome {
   tradesUpserted: number;
   /** Accounts whose transaction history the broker hasn't finished sending. */
   accountsStillBackfilling: string[];
+  /** Accounts whose history hit the page ceiling — history may be incomplete. */
+  accountsTruncated: string[];
+  /** Live holdings the broker reported but sent no opening fills for. */
+  holdingsWithoutFills: number;
   /** Per-account: does this broker actually supply execution times? */
   timeGranularity: { account: string; hasExecutionTimes: boolean }[];
 }
@@ -101,6 +106,7 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
   let fillsInserted = 0;
   const liveAccountIds: string[] = [];
   const backfilling: string[] = [];
+  const truncated: string[] = [];
   const granularity: { account: string; hasExecutionTimes: boolean }[] = [];
 
   for (const acct of accounts) {
@@ -110,6 +116,7 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
     const authId = (acct as { brokerage_authorization?: string })
       .brokerage_authorization;
     const txSync = acct.sync_status?.transactions;
+    const cash = await fetchCash(creds, acct.id);
 
     const [saved] = await db
       .insert(brokerageAccounts)
@@ -122,6 +129,7 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
         institutionName: acct.institution_name ?? null,
         currency: acct.balance?.total?.currency ?? null,
         balance: n(acct.balance?.total?.amount),
+        cash: n(cash),
         transactionsSynced: txSync?.initial_sync_completed ? now : null,
         lastSyncAt: now,
       })
@@ -134,6 +142,7 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
           institutionName: acct.institution_name ?? null,
           currency: acct.balance?.total?.currency ?? null,
           balance: n(acct.balance?.total?.amount),
+          cash: n(cash),
           transactionsSynced: txSync?.initial_sync_completed ? now : null,
           lastSyncAt: now,
         },
@@ -155,16 +164,10 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
       continue;
     }
 
-    const res = await snaptrade.accountInformation.getAccountActivities({
-      userId: creds.userId,
-      userSecret: creds.userSecret,
-      accountId: acct.id,
-    });
-    const activities =
-      (res.data as { data?: unknown[] })?.data ??
-      (Array.isArray(res.data) ? (res.data as unknown[]) : []);
+    const history = await fetchAllActivities(creds, acct.id);
+    if (history.truncated) truncated.push(acct.name ?? acct.id);
 
-    const mapped = mapActivitiesToFills(activities, saved.id);
+    const mapped = mapActivitiesToFills(history.activities, saved.id);
     granularity.push({
       account: acct.name ?? acct.id,
       hasExecutionTimes: mapped.hasExecutionTimes,
@@ -191,15 +194,97 @@ export async function syncBrokerageData(userId: string): Promise<SyncOutcome> {
   // running it per account would repeat the same work.
   const recon = fillsInserted > 0 ? await runReconstruction(userId, "sync") : null;
 
+  // Fills alone can't prove a position is open — the broker may never have sent
+  // its opening row. Let the live holdings snapshot fill those gaps.
+  const reconciled = await reconcileHoldings(userId);
+
   return {
     connections: auths.length,
     accounts: accounts.length,
     positions: positionCount,
     fillsInserted,
-    tradesUpserted: recon?.tradesUpserted ?? 0,
+    tradesUpserted: (recon?.tradesUpserted ?? 0) + reconciled.synthesized,
+    holdingsWithoutFills: reconciled.synthesized,
     accountsStillBackfilling: backfilling,
+    accountsTruncated: truncated,
     timeGranularity: granularity,
   };
+}
+
+/**
+ * Settleable cash for an account, summed across currencies.
+ *
+ * `account.balance.total` is the account's TOTAL market value — cash plus every
+ * holding — so using it as cash both mislabels it and double-counts the
+ * positions when the two are added. The balances endpoint is the only source of
+ * actual cash. Returns null when the brokerage doesn't supply it, so we show
+ * nothing rather than a wrong zero.
+ */
+async function fetchCash(
+  creds: { userId: string; userSecret: string },
+  accountId: string,
+): Promise<number | null> {
+  try {
+    const res = await snaptrade.accountInformation.getUserAccountBalance({
+      userId: creds.userId,
+      userSecret: creds.userSecret,
+      accountId,
+    });
+    const rows = res.data ?? [];
+    const withCash = rows.filter((b) => b.cash != null);
+    if (withCash.length === 0) return null;
+    return withCash.reduce((s, b) => s + Number(b.cash), 0);
+  } catch {
+    // Not every brokerage exposes balances — keep the rest of the sync working.
+    return null;
+  }
+}
+
+/** SnapTrade's page size for activities — also its default when you omit `limit`. */
+const ACTIVITY_PAGE = 1000;
+/** Safety stop: 100 pages = 100k activities. Guards against a bad `total`. */
+const MAX_ACTIVITY_PAGES = 100;
+
+/**
+ * Reads an account's FULL transaction history.
+ *
+ * `getAccountActivities` is paginated and defaults to the first 1000 rows, which
+ * are returned oldest-first. Fetching a single page therefore silently caps a
+ * busy account at its first 1000 activities and drops everything newer — the
+ * account looks synced while months of recent trades never arrive. Page until
+ * the API stops giving us rows.
+ */
+async function fetchAllActivities(
+  creds: { userId: string; userSecret: string },
+  accountId: string,
+): Promise<{ activities: unknown[]; truncated: boolean }> {
+  const all: unknown[] = [];
+
+  for (let page = 0; page < MAX_ACTIVITY_PAGES; page++) {
+    const res = await snaptrade.accountInformation.getAccountActivities({
+      userId: creds.userId,
+      userSecret: creds.userSecret,
+      accountId,
+      offset: page * ACTIVITY_PAGE,
+      limit: ACTIVITY_PAGE,
+    });
+
+    const body = res.data as
+      | { data?: unknown[]; pagination?: { total?: number } }
+      | unknown[];
+    const batch = Array.isArray(body) ? body : body?.data ?? [];
+    all.push(...batch);
+
+    // A short page is the last page. `total` lets us stop on an exact boundary
+    // instead of spending a round-trip to discover an empty page.
+    const total = Array.isArray(body) ? undefined : body?.pagination?.total;
+    if (batch.length < ACTIVITY_PAGE) return { activities: all, truncated: false };
+    if (typeof total === "number" && all.length >= total) {
+      return { activities: all, truncated: false };
+    }
+  }
+
+  return { activities: all, truncated: true };
 }
 
 async function syncPositionsForAccount(
@@ -234,6 +319,9 @@ async function syncPositionsForAccount(
       symbol: ticker,
       description: sym?.description ?? null,
       kind: "stock",
+      // `crypto`, `cs`, `et`, … — the only signal that separates a coin from an
+      // equity, since both arrive through the same holdings endpoint.
+      securityType: sym?.type?.code ?? null,
       quantity: String(units),
       averageCost: n(p.average_purchase_price),
       lastPrice: n(price),

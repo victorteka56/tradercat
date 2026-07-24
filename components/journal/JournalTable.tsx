@@ -6,7 +6,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { SourceBadge } from "@/components/journal/SourceBadge";
 import type { JournalTrade } from "@/lib/queries/journal";
-import { tradeLabel } from "@/lib/trade-display";
+import { tradeLabel, hasRealizedPnl } from "@/lib/trade-display";
 import { usd, holdingLabel, hasTimeOfDay } from "@/lib/format";
 
 type Filter = "all" | "wins" | "losses" | "options" | "stocks" | "open";
@@ -260,6 +260,7 @@ const price = (n: number | null): string | null =>
 
 function Row({ trade }: { trade: JournalTrade }) {
   const isOption = trade.kind === "option";
+  const realized = hasRealizedPnl(trade);
   const up = trade.netPnl >= 0;
   const when = trade.exitAt ?? trade.entryAt;
 
@@ -283,7 +284,13 @@ function Row({ trade }: { trade: JournalTrade }) {
 
   // Strike + expiry read as one contract identity: "$570 C · Jul 23".
   const expShort = trade.expiry
-    ? new Date(trade.expiry).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ? new Date(trade.expiry).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        // An expiry is a calendar date stored at UTC midnight — formatting it in
+        // local time would shift it a day back for anyone west of UTC.
+        timeZone: "UTC",
+      })
     : null;
 
   // A bought put/call is technically "long the contract", but showing LONG next
@@ -332,10 +339,10 @@ function Row({ trade }: { trade: JournalTrade }) {
 
       <div
         className={`tnum w-28 text-right text-[14.5px] font-semibold ${
-          trade.incomplete ? "text-ink-faint" : up ? "text-pos" : "text-neg"
+          !realized ? "text-ink-faint" : up ? "text-pos" : "text-neg"
         }`}
       >
-        {trade.incomplete ? "—" : usd(trade.netPnl, { sign: true })}
+        {realized ? usd(trade.netPnl, { sign: true }) : "—"}
       </div>
 
       <div

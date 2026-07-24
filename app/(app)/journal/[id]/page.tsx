@@ -5,7 +5,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { getTradeById, getTradeFills, getTradeNote } from "@/lib/queries/journal";
-import { tradeLabel, tradeSubtitle } from "@/lib/trade-display";
+import { tradeLabel, tradeSubtitle, hasRealizedPnl } from "@/lib/trade-display";
 import {
   usd,
   holdingLabel,
@@ -38,6 +38,7 @@ export default async function TradeDetailPage({
     getTradeFills(user.id, trade.id),
     getTradeNote(user.id, trade.id),
   ]);
+  const realized = hasRealizedPnl(trade);
   const up = trade.netPnl >= 0;
 
   /**
@@ -169,12 +170,14 @@ export default async function TradeDetailPage({
         <div className="text-right">
           <div
             className={`tnum text-[24px] font-semibold ${
-              up ? "text-pos" : "text-neg"
+              !realized ? "text-ink-faint" : up ? "text-pos" : "text-neg"
             }`}
           >
-            {usd(trade.netPnl, { sign: true })}
+            {realized ? usd(trade.netPnl, { sign: true }) : "—"}
           </div>
-          <div className="text-[12px] text-ink-soft">realized</div>
+          <div className="text-[12px] text-ink-soft">
+            {trade.status === "open" ? "still open" : "realized"}
+          </div>
         </div>
       </div>
 

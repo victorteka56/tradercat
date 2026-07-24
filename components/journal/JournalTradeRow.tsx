@@ -2,10 +2,11 @@ import Link from "next/link";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { SourceBadge } from "@/components/journal/SourceBadge";
 import type { JournalTrade } from "@/lib/queries/journal";
-import { tradeLabel, tradeSubtitle } from "@/lib/trade-display";
+import { tradeLabel, tradeSubtitle, hasRealizedPnl } from "@/lib/trade-display";
 import { usd, holdingLabel } from "@/lib/format";
 
 export function JournalTradeRow({ trade }: { trade: JournalTrade }) {
+  const realized = hasRealizedPnl(trade);
   const up = trade.netPnl >= 0;
   const when = trade.exitAt ?? trade.entryAt;
 
@@ -51,10 +52,10 @@ export function JournalTradeRow({ trade }: { trade: JournalTrade }) {
         {/* Incomplete P/L is unreliable (no cost basis) — mute it, don't color it. */}
         <div
           className={`tnum text-[14px] font-semibold ${
-            trade.incomplete ? "text-ink-faint" : up ? "text-pos" : "text-neg"
+            !realized ? "text-ink-faint" : up ? "text-pos" : "text-neg"
           }`}
         >
-          {trade.incomplete ? "—" : usd(trade.netPnl, { sign: true })}
+          {realized ? usd(trade.netPnl, { sign: true }) : "—"}
         </div>
         {trade.rMultiple != null && (
           <div

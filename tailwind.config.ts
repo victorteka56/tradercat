@@ -1,21 +1,33 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Themeable colour token that still honours Tailwind's `/opacity` modifier.
+ *
+ * A bare `var(--pos)` cannot: Tailwind compiles `bg-pos/10` to
+ * `rgb(var(--pos) / 0.1)`, and since the variable holds a hex rather than
+ * channels, that declaration is invalid and the browser drops it — the element
+ * renders fully transparent, silently. `color-mix` composes the alpha instead,
+ * and with no modifier `<alpha-value>` resolves to 1, leaving the colour exact.
+ */
+const token = (name: string) =>
+  `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        bg: "var(--bg)",
-        surface: "var(--surface)",
-        "surface-2": "var(--surface-2)",
-        ink: "var(--ink)",
-        "ink-soft": "var(--ink-soft)",
-        "ink-faint": "var(--ink-faint)",
-        line: "var(--line)",
-        info: "var(--info)",
-        pos: "var(--pos)",
-        neg: "var(--neg)",
-        amber: "var(--amber)",
+        bg: token("--bg"),
+        surface: token("--surface"),
+        "surface-2": token("--surface-2"),
+        ink: token("--ink"),
+        "ink-soft": token("--ink-soft"),
+        "ink-faint": token("--ink-faint"),
+        line: token("--line"),
+        info: token("--info"),
+        pos: token("--pos"),
+        neg: token("--neg"),
+        amber: token("--amber"),
       },
       borderRadius: {
         card: "16px",

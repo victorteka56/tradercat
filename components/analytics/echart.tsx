@@ -23,24 +23,9 @@ export const C = {
   surface2: "#f1f3f6",
 };
 
-/**
- * An elegant, CVD-validated categorical palette (slate / teal / amber / violet /
- * rose). Used to give each breakdown its own colour identity so the analytics
- * page isn't wall-to-wall green/red — green/red is reserved for where it *means*
- * profit vs loss (value labels, Long-vs-short, symbol tiles, the equity curve).
- * Validated with the dataviz palette checker (light surface): CVD ΔE ≥ 11.5,
- * chroma ≥ floor, contrast ≥ 3:1.
- */
-export const PALETTE = {
-  slate: "#3a5a9c",
-  teal: "#009e88",
-  amber: "#a3741a",
-  violet: "#6d5b9e",
-  rose: "#c05f6a",
-};
-
-/** Fixed categorical order for composition charts (donut segments, etc.). */
-export const CAT = [PALETTE.slate, PALETTE.amber, PALETTE.teal, PALETTE.violet, PALETTE.rose];
+// The categorical palette now lives in a plain module so server components can
+// share it; re-exported here so chart code keeps importing from one place.
+export { PALETTE, CAT, CASH_COLOR } from "@/lib/chart-colors";
 
 /** Glossy vertical gradient (bars/columns) — a light highlight at the tip that
  *  deepens toward the base, so a bar reads as a solid object with volume. */
@@ -117,9 +102,12 @@ export const BASE = {
 export function EChart({
   option,
   height = 210,
+  onEvents,
 }: {
   option: Record<string, unknown>;
   height?: number;
+  /** ECharts event handlers, e.g. `{ mouseover, globalout }` for hover readouts. */
+  onEvents?: Record<string, (params: never) => void>;
 }) {
   const chartRef = useRef<ReactECharts>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -147,6 +135,7 @@ export function EChart({
         lazyUpdate
         style={{ height, width: "100%" }}
         opts={{ renderer: "canvas" }}
+        onEvents={onEvents}
       />
     </div>
   );
