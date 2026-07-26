@@ -8,6 +8,7 @@ import { createConnectionPortalUrl } from "@/lib/snaptrade/client";
 import { disconnectBrokerage, syncBrokerageData } from "@/lib/snaptrade/sync";
 import { precomputeReviews } from "@/lib/ai/precompute";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { captureError } from "@/lib/observability";
 
 function originFromRequest(): string {
   const h = headers();
@@ -39,7 +40,9 @@ export async function syncBrokerage() {
   // ready by the time they open a trade. Detached on purpose; in production
   // this moves to a queue.
   if (outcome.fillsInserted > 0) {
-    void precomputeReviews(user.id).catch(() => {});
+    void precomputeReviews(user.id).catch((err) =>
+      captureError(err, { op: "precompute_after_sync", userId: user.id }),
+    );
   }
 
   revalidatePath("/import");

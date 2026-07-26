@@ -8,6 +8,7 @@ import {
   positions,
 } from "@/lib/db/schema";
 import { getCreds, snaptrade } from "./client";
+import { captureError } from "@/lib/observability";
 import { mapActivitiesToFills } from "./activities";
 import { ingestBrokerageFills, runReconstruction } from "@/lib/import/pipeline";
 import { reconcileHoldings } from "./reconcile";
@@ -234,8 +235,9 @@ async function fetchCash(
     const withCash = rows.filter((b) => b.cash != null);
     if (withCash.length === 0) return null;
     return withCash.reduce((s, b) => s + Number(b.cash), 0);
-  } catch {
+  } catch (err) {
     // Not every brokerage exposes balances — keep the rest of the sync working.
+    captureError(err, { op: "snaptrade_cash", accountId });
     return null;
   }
 }
@@ -370,8 +372,9 @@ async function syncPositionsForAccount(
         asOf: now,
       });
     }
-  } catch {
+  } catch (err) {
     // Brokerage doesn't expose option holdings — equities still sync.
+    captureError(err, { op: "snaptrade_option_holdings", accountId: externalAccountId });
   }
 
   // Snapshot semantics: replace, don't merge.

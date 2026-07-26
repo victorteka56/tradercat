@@ -13,6 +13,7 @@ import {
   type TradeFill,
 } from "@/lib/queries/journal";
 import { getTradeChart } from "@/lib/market/candles";
+import { captureError } from "@/lib/observability";
 import { computeExcursions, type Excursions } from "@/lib/analysis/excursions";
 import { computeRunningPnl } from "@/lib/analysis/running-pnl";
 import { deepseekJson, extractJson } from "./deepseek";
@@ -478,8 +479,10 @@ export async function generateAiReview(
       });
 
     return { review: parsed.data, kind: "ai", cached: false };
-  } catch {
-    // Balance exhausted, timeout, bad shape — the floor is still solid.
+  } catch (err) {
+    // Balance exhausted, timeout, bad shape — the floor is still solid. Log it
+    // so a persistent AI outage is visible instead of silently degrading.
+    captureError(err, { op: "ai_trade_review", userId, tradeId });
     return { review: ctx.fallback, kind: "computed", cached: false };
   }
 }

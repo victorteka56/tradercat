@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { symbolNews, trades } from "@/lib/db/schema";
 import { fetchPolygonNews, type NewsArticle, type Sentiment } from "@/lib/market/news";
+import { captureError } from "@/lib/observability";
 
 export type { NewsArticle, Sentiment };
 export interface PositionArticle extends NewsArticle {
@@ -87,6 +88,7 @@ async function refreshOne(symbol: string): Promise<void> {
         });
     } catch (e) {
       // Record the error, stamp fetchedAt so we back off, keep serving what we have.
+      captureError(e, { op: "news_refresh", symbol });
       const error = String(e).slice(0, 300);
       await db
         .insert(symbolNews)

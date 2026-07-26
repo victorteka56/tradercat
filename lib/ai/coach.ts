@@ -13,6 +13,7 @@ import {
 } from "@/lib/queries/journal";
 import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics";
 import { hasTimeOfDay } from "@/lib/format";
+import { captureError } from "@/lib/observability";
 import { deepseekJson, extractJson } from "./deepseek";
 
 /**
@@ -288,8 +289,9 @@ export async function refreshCoachSummary(userId: string): Promise<CoachSummary>
         set: { inputHash: ctx.inputHash, model: MODEL, output, updatedAt: new Date() },
       });
     return { ...output, source: "ai" };
-  } catch {
-    // AI failed — the computed floor is always valid.
+  } catch (err) {
+    // AI failed — the computed floor is always valid. Log so an outage shows.
+    captureError(err, { op: "ai_coach", userId });
     return fallback(ctx);
   }
 }

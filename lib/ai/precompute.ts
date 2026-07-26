@@ -3,6 +3,7 @@ import "server-only";
 import { and, eq, isNotNull, notExists } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aiAnalyses, trades } from "@/lib/db/schema";
+import { captureError } from "@/lib/observability";
 import { generateAiReview } from "./trade-review";
 
 /**
@@ -62,8 +63,9 @@ export async function precomputeReviews(
       try {
         const res = await generateAiReview(userId, tradeId);
         if (!("needsData" in res) && res.kind === "ai") generated++;
-      } catch {
+      } catch (err) {
         /* skip — a single failure never stalls the batch */
+        captureError(err, { op: "precompute_review", userId, tradeId });
       }
     }
   }
