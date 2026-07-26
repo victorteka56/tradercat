@@ -15,7 +15,11 @@ import {
   TreemapChart,
 } from "@/components/analytics/lazy-charts";
 import { TagPerformanceCard } from "@/components/analytics/TagPerformanceCard";
-import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics";
+import {
+  computeAnalytics,
+  type AnalyticsTrade,
+  type OvertradingBucket,
+} from "@/lib/analysis/analytics";
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd } from "@/lib/format";
 import type { TagPerformance } from "@/lib/queries/journal";
@@ -164,6 +168,20 @@ export function AnalyticsView({
                 href="/analytics/days"
               />
             </div>
+            {a.bySession && (
+              <div className="mb-3 break-inside-avoid">
+                <BarBreakdown
+                  title="By time of day"
+                  question="Which part of the session pays — and which bleeds?"
+                  buckets={a.bySession}
+                />
+              </div>
+            )}
+            {a.overtrading && (
+              <div className="mb-3 break-inside-avoid">
+                <OvertradingCard buckets={a.overtrading} />
+              </div>
+            )}
             <div className="mb-3 break-inside-avoid">
               <ColumnChart
                 title="By hold length"
@@ -212,6 +230,62 @@ function fmtHold(days: number | null): string {
 }
 
 const asR = (r: number) => `${r > 0 ? "+" : ""}${r.toFixed(2)}R`;
+
+/**
+ * Overtrading — average result on a day, binned by how many trades that day
+ * held. A curve that falls as the trade count rises is the classic tell: the
+ * more you trade in a session, the worse the day tends to end.
+ */
+function OvertradingCard({ buckets }: { buckets: OvertradingBucket[] }) {
+  const max = Math.max(...buckets.map((b) => Math.abs(b.avgDayPnl)), 1);
+  const quiet = buckets[0]?.avgDayPnl ?? 0;
+  const busy = buckets[buckets.length - 1]?.avgDayPnl ?? 0;
+  const worseWhenBusy = buckets.length >= 2 && busy < quiet;
+
+  return (
+    <SurfaceCard className="p-4">
+      <h3 className="text-[14px] font-semibold text-ink">Overtrading check</h3>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-ink-soft">
+        Average result per day, by how many trades you took.
+        {worseWhenBusy ? " Your busier days end worse." : ""}
+      </p>
+      <div className="space-y-2">
+        {buckets.map((b) => {
+          const pos = b.avgDayPnl >= 0;
+          const w = (Math.abs(b.avgDayPnl) / max) * 50;
+          return (
+            <div key={b.label} className="flex items-center gap-3">
+              <div className="w-[24%] min-w-0">
+                <div className="truncate text-[12.5px] font-medium text-ink">{b.label}</div>
+                <div className="tnum text-[10.5px] text-ink-faint">
+                  {b.days} day{b.days === 1 ? "" : "s"}
+                </div>
+              </div>
+              <div className="relative h-2 flex-1 rounded-full bg-surface-2">
+                <div className="absolute left-1/2 top-0 h-full w-px bg-line" />
+                <div
+                  className="absolute top-0 h-full rounded-full"
+                  style={{
+                    background: pos ? "var(--pos, #17915f)" : "var(--neg, #bd4640)",
+                    width: `${w}%`,
+                    left: pos ? "50%" : `${50 - w}%`,
+                  }}
+                />
+              </div>
+              <div
+                className={`tnum w-[24%] text-right text-[12px] font-semibold ${
+                  pos ? "text-pos" : "text-neg"
+                }`}
+              >
+                {usd(b.avgDayPnl, { sign: true })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </SurfaceCard>
+  );
+}
 
 /**
  * R-multiple expectancy — the pro-desk read on edge. Average R across scored

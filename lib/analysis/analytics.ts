@@ -15,6 +15,10 @@ export interface AnalyticsTrade {
   symbol: string;
   /** exit timestamp, epoch ms (null only for trades with no known close) */
   exitMs: number | null;
+  /** entry timestamp, epoch ms — for time-of-day; null when unknown. */
+  entryMs: number | null;
+  /** True only when the entry carries a real intraday time (not a date-only CSV row). */
+  entryHasTime: boolean;
   holdingSeconds: number | null;
   /** R-multiple, if the trader scored the trade's risk. Null otherwise. */
   rMultiple: number | null;
@@ -126,6 +130,18 @@ export interface Analytics {
   distribution: DistBucket[];
   /** R-multiple stats — null when the trader hasn't scored any trade's risk. */
   rStats: RStats | null;
+  /** By entry session — null unless enough trades carry an intraday time. */
+  bySession: Bucket[] | null;
+  /** Daily trade-count vs. result — null unless enough dated trades. */
+  overtrading: OvertradingBucket[] | null;
+}
+
+export interface OvertradingBucket {
+  label: string;
+  days: number;
+  totalPnl: number;
+  /** average P/L on a day with this many trades — the overtrading read */
+  avgDayPnl: number;
 }
 
 const usd0 = (n: number) =>
@@ -394,7 +410,92 @@ export function computeAnalytics(trades: AnalyticsTrade[]): Analytics | null {
     symbols: [...bySymbol].sort((a, b) => b.trades - a.trades),
     distribution,
     rStats: computeRStats(trades),
+    bySession: computeSessions(trades),
+    overtrading: computeOvertrading(trades),
   };
+}
+
+// Exchange-local (ET) hour and day, so sessions and "trading days" line up with
+// the market rather than the viewer's timezone.
+const etHourFmt = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  hour12: false,
+  timeZone: "America/New_York",
+});
+const etDayFmt = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "America/New_York",
+});
+const etHour = (ms: number) => {
+  const h = Number(etHourFmt.format(new Date(ms)));
+  return h === 24 ? 0 : h; // some engines render midnight as 24
+};
+
+const SESSION_ORDER = ["pre", "open", "mid", "power", "late"] as const;
+const SESSION_LABEL: Record<string, string> = {
+  pre: "Pre-market",
+  open: "Open · 9:30–11",
+  mid: "Midday · 11–2",
+  power: "Power hour · 2–4",
+  late: "After hours",
+};
+const sessionOf = (h: number) =>
+  h < 9 ? "pre" : h < 11 ? "open" : h < 14 ? "mid" : h < 16 ? "power" : "late";
+
+/** Bucket trades by the market session they were opened in. */
+function computeSessions(trades: AnalyticsTrade[]): Bucket[] | null {
+  const dated = trades.filter((t) => t.entryHasTime && t.entryMs != null);
+  if (dated.length < 5) return null; // too thin to read a pattern
+  const buckets = bucketize(
+    dated,
+    (t) => sessionOf(etHour(t.entryMs as number)),
+    (k) => SESSION_LABEL[k],
+  );
+  return buckets.sort(
+    (a, b) => SESSION_ORDER.indexOf(a.key as never) - SESSION_ORDER.indexOf(b.key as never),
+  );
+}
+
+const VOLUME_BINS: { label: string; test: (n: number) => boolean }[] = [
+  { label: "1 trade", test: (n) => n === 1 },
+  { label: "2–3 trades", test: (n) => n >= 2 && n <= 3 },
+  { label: "4–6 trades", test: (n) => n >= 4 && n <= 6 },
+  { label: "7+ trades", test: (n) => n >= 7 },
+];
+
+/**
+ * Overtrading: does the day's result get worse the more you trade? Group trades
+ * into ET calendar days, then bin the days by how many trades they held and show
+ * the average day's P/L per bin. A falling curve is the classic overtrading tell.
+ */
+function computeOvertrading(trades: AnalyticsTrade[]): OvertradingBucket[] | null {
+  const byDay = new Map<string, { count: number; pnl: number }>();
+  for (const t of trades) {
+    if (t.exitMs == null) continue;
+    const key = etDayFmt.format(new Date(t.exitMs));
+    const d = byDay.get(key) ?? { count: 0, pnl: 0 };
+    d.count++;
+    d.pnl += t.pnl;
+    byDay.set(key, d);
+  }
+  if (byDay.size < 5) return null;
+
+  const days = [...byDay.values()];
+  const out = VOLUME_BINS.map((bin) => {
+    const inBin = days.filter((d) => bin.test(d.count));
+    const totalPnl = inBin.reduce((s, d) => s + d.pnl, 0);
+    return {
+      label: bin.label,
+      days: inBin.length,
+      totalPnl,
+      avgDayPnl: inBin.length ? totalPnl / inBin.length : 0,
+    };
+  }).filter((b) => b.days > 0);
+
+  // Only meaningful if the trader actually has both quiet and busy days.
+  return out.length >= 2 ? out : null;
 }
 
 /** R-multiple aggregates over the trades that carry an R. */

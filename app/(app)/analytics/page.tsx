@@ -3,6 +3,7 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AnalyticsView } from "@/components/analytics/AnalyticsView";
 import { requireUser } from "@/lib/auth";
 import { getTrades, getTagPerformance } from "@/lib/queries/journal";
+import { hasTimeOfDay } from "@/lib/format";
 import type { AnalyticsTrade } from "@/lib/analysis/analytics";
 
 export default async function AnalyticsPage() {
@@ -23,6 +24,8 @@ export default async function AnalyticsPage() {
       optionType: t.optionType,
       symbol: t.symbol,
       exitMs: t.exitAt ? new Date(t.exitAt).getTime() : null,
+      entryMs: t.entryAt ? new Date(t.entryAt).getTime() : null,
+      entryHasTime: hasTimeOfDay(t.entryAt),
       holdingSeconds: t.holdingSeconds,
       rMultiple: t.rMultiple,
     }));
