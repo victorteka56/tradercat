@@ -23,7 +23,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Which brokers does TraderCat support?",
-    a: "You can import a CSV export from brokers like Robinhood and Webull, or connect your brokerage directly for automatic syncing. Synced trades include exact execution times, which unlock price charts and drawdown analysis.",
+    a: "You can import a Robinhood CSV export, or securely connect your brokerage — Robinhood, Webull, Schwab, Fidelity and 20+ others — for automatic syncing. Synced trades include exact execution times, which unlock price charts and drawdown analysis.",
   },
   {
     q: "How does the AI trade review work?",

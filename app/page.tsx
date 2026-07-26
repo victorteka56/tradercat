@@ -190,7 +190,9 @@ export default function LandingPage() {
             <span>
               © {new Date().getFullYear()} {SITE_NAME}
             </span>
-            <nav className="flex gap-5">
+            <nav className="flex flex-wrap gap-x-5 gap-y-2">
+              <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+              <Link href="/terms" className="hover:text-ink">Terms</Link>
               <Link href="/login" className="hover:text-ink">Sign in</Link>
               <Link href="/signup" className="hover:text-ink">Get started</Link>
             </nav>
