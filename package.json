@@ -12,7 +12,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:setup": "node scripts/apply-sql.mjs"
+    "db:setup": "node scripts/apply-sql.mjs",
+    "test": "vitest",
+    "test:ci": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
@@ -37,8 +39,11 @@
     "autoprefixer": "10.4.19",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
     "postcss": "8.4.39",
     "tailwindcss": "3.4.6",
-    "typescript": "5.5.3"
+    "typescript": "5.5.3",
+    "vitest": "^2.1.9"
   }
 }
