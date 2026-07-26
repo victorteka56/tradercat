@@ -2,12 +2,15 @@ import Link from "next/link";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { AnalyticsView } from "@/components/analytics/AnalyticsView";
 import { requireUser } from "@/lib/auth";
-import { getTrades } from "@/lib/queries/journal";
+import { getTrades, getTagPerformance } from "@/lib/queries/journal";
 import type { AnalyticsTrade } from "@/lib/analysis/analytics";
 
 export default async function AnalyticsPage() {
   const user = await requireUser();
-  const all = await getTrades(user.id, { limit: 5000 });
+  const [all, tagPerformance] = await Promise.all([
+    getTrades(user.id, { limit: 5000 }),
+    getTagPerformance(user.id),
+  ]);
 
   // Ship only what the analytics need — realized trades, minimal fields — so the
   // whole page can filter and recompute client-side per date range.
@@ -46,5 +49,5 @@ export default async function AnalyticsPage() {
     );
   }
 
-  return <AnalyticsView trades={trades} />;
+  return <AnalyticsView trades={trades} tagPerformance={tagPerformance} />;
 }

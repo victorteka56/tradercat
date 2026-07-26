@@ -6,8 +6,10 @@ import {
   brokerageAccounts,
   fills,
   importBatches,
+  tags,
   tradeLegs,
   tradeNotes,
+  tradeTags,
   trades,
 } from "@/lib/db/schema";
 
@@ -150,6 +152,106 @@ export async function getTradeNote(
     .orderBy(desc(tradeNotes.createdAt))
     .limit(1);
   return row?.body ?? "";
+}
+
+export type TagKind = "setup" | "mistake" | "emotion" | "custom";
+
+export interface TradeTag {
+  id: string;
+  name: string;
+  kind: TagKind;
+}
+
+/** Tags attached to one trade. */
+export async function getTradeTags(userId: string, tradeId: string): Promise<TradeTag[]> {
+  const rows = await db
+    .select({ id: tags.id, name: tags.name, kind: tags.kind })
+    .from(tradeTags)
+    .innerJoin(tags, eq(tags.id, tradeTags.tagId))
+    .where(and(eq(tradeTags.userId, userId), eq(tradeTags.tradeId, tradeId)))
+    .orderBy(tags.kind, tags.name);
+  return rows as TradeTag[];
+}
+
+/** Every tag the user has ever created, with how many trades carry it. */
+export async function listUserTags(
+  userId: string,
+): Promise<(TradeTag & { uses: number })[]> {
+  const rows = await db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      kind: tags.kind,
+      uses: sql<string>`count(${tradeTags.tradeId})`,
+    })
+    .from(tags)
+    .leftJoin(tradeTags, eq(tradeTags.tagId, tags.id))
+    .where(eq(tags.userId, userId))
+    .groupBy(tags.id, tags.name, tags.kind)
+    .orderBy(desc(sql`count(${tradeTags.tradeId})`), tags.name);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind as TagKind,
+    uses: Number(r.uses),
+  }));
+}
+
+export interface TagPerformance {
+  id: string;
+  name: string;
+  kind: TagKind;
+  trades: number;
+  wins: number;
+  winRate: number;
+  netPnl: number;
+  /** Average $ per trade — expectancy for this tag. */
+  expectancy: number;
+}
+
+/**
+ * Per-tag performance over realized trades — the payoff of tagging: "this setup
+ * makes money, this mistake costs you." Closed, complete trades only, so the P/L
+ * is trustworthy. Computed in SQL for exact numeric.
+ */
+export async function getTagPerformance(userId: string): Promise<TagPerformance[]> {
+  const rows = await db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      kind: tags.kind,
+      trades: sql<string>`count(*)`,
+      wins: sql<string>`count(*) filter (where ${trades.netPnl} > 0)`,
+      netPnl: sql<string>`coalesce(sum(${trades.netPnl}), 0)`,
+    })
+    .from(tradeTags)
+    .innerJoin(tags, eq(tags.id, tradeTags.tagId))
+    .innerJoin(trades, eq(trades.id, tradeTags.tradeId))
+    .where(
+      and(
+        eq(tradeTags.userId, userId),
+        eq(trades.status, "closed"),
+        eq(trades.incomplete, false),
+      ),
+    )
+    .groupBy(tags.id, tags.name, tags.kind)
+    .orderBy(desc(sql`sum(${trades.netPnl})`));
+
+  return rows.map((r) => {
+    const n = Number(r.trades);
+    const wins = Number(r.wins);
+    const netPnl = Number(r.netPnl);
+    return {
+      id: r.id,
+      name: r.name,
+      kind: r.kind as TagKind,
+      trades: n,
+      wins,
+      winRate: n > 0 ? Math.round((wins / n) * 100) : 0,
+      netPnl,
+      expectancy: n > 0 ? netPnl / n : 0,
+    };
+  });
 }
 
 export interface TradeFill {

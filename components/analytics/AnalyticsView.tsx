@@ -14,16 +14,24 @@ import {
   ActivityChart,
   TreemapChart,
 } from "@/components/analytics/lazy-charts";
+import { TagPerformanceCard } from "@/components/analytics/TagPerformanceCard";
 import { computeAnalytics, type AnalyticsTrade } from "@/lib/analysis/analytics";
 import { RANGES, RANGE_LABEL, windowStart, type RangeKey } from "@/lib/analysis/range";
 import { usd } from "@/lib/format";
+import type { TagPerformance } from "@/lib/queries/journal";
 
 /**
  * The whole analytics page, driven by one date-range filter. Everything —
  * insights, KPIs, equity curve, every breakdown — recomputes client-side from
  * the same window, so switching 1M ↔ YTD is instant and the charts animate.
  */
-export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
+export function AnalyticsView({
+  trades,
+  tagPerformance,
+}: {
+  trades: AnalyticsTrade[];
+  tagPerformance: TagPerformance[];
+}) {
   const [range, setRange] = useState<RangeKey>("ALL");
   const now = Date.now();
 
@@ -177,6 +185,15 @@ export function AnalyticsView({ trades }: { trades: AnalyticsTrade[] }) {
           </div>
           <div className="mb-6" />
         </>
+      )}
+
+      {/* Tags are labelled by the trader, aggregated all-time — so this sits
+          outside the date-range block; it answers "which setups work" not
+          "how did this month go". */}
+      {tagPerformance.length > 0 && (
+        <div className="mt-2 pb-6">
+          <TagPerformanceCard tags={tagPerformance} />
+        </div>
       )}
     </main>
   );

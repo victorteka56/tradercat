@@ -4,7 +4,12 @@ import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { requireUser } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { getTradeById, getTradeFills, getTradeNote } from "@/lib/queries/journal";
+import {
+  getTradeById,
+  getTradeFills,
+  getTradeNote,
+  getTradeTags,
+} from "@/lib/queries/journal";
 import { tradeLabel, tradeSubtitle, hasRealizedPnl } from "@/lib/trade-display";
 import {
   usd,
@@ -19,6 +24,7 @@ import { TradeChartCard } from "@/components/journal/TradeChartCard";
 import { ExcursionCard } from "@/components/journal/ExcursionCard";
 import { RunningPnlCard } from "@/components/journal/RunningPnlCard";
 import { TradeNotesCard } from "@/components/journal/TradeNotesCard";
+import { TradeTagsCard } from "@/components/journal/TradeTagsCard";
 import { TradeAnalysisDrawer } from "@/components/journal/TradeAnalysisDrawer";
 import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
 import { computeExcursions } from "@/lib/analysis/excursions";
@@ -34,9 +40,10 @@ export default async function TradeDetailPage({
   const trade = await getTradeById(user.id, params.id);
   if (!trade) notFound();
 
-  const [fills, note] = await Promise.all([
+  const [fills, note, tradeTags] = await Promise.all([
     getTradeFills(user.id, trade.id),
     getTradeNote(user.id, trade.id),
+    getTradeTags(user.id, trade.id),
   ]);
   const realized = hasRealizedPnl(trade);
   const up = trade.netPnl >= 0;
@@ -317,6 +324,8 @@ export default async function TradeDetailPage({
           {timingBlock}
         </div>
       </div>
+
+      <TradeTagsCard tradeId={trade.id} initial={tradeTags} />
 
       <TradeNotesCard tradeId={trade.id} initial={note} />
 
