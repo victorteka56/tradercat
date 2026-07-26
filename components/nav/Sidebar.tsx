@@ -9,6 +9,7 @@ import {
   ChartColumnBig,
   PieChart,
   Upload,
+  Settings,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const items = [
   { href: "/analytics", label: "Analytics", Icon: ChartColumnBig },
   { href: "/portfolio", label: "Portfolio", Icon: PieChart },
   { href: "/import", label: "Import", Icon: Upload },
+  { href: "/settings", label: "Settings", Icon: Settings },
 ];
 
 export function Sidebar({
