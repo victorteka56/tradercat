@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { JournalTradeRow } from "@/components/journal/JournalTradeRow";
 import { EquityPanel } from "@/components/journal/EquityPanel";
 import { PositionsNews } from "@/components/home/PositionsNews";
+import { CoachCard } from "@/components/home/CoachCard";
 import { requireUser } from "@/lib/auth";
 import {
   getJournalStats,
@@ -11,15 +12,17 @@ import {
   getTrades,
 } from "@/lib/queries/journal";
 import { getCachedPositionsNews } from "@/lib/news";
+import { getCoachSummary } from "@/lib/ai/coach";
 import { usd } from "@/lib/format";
 
 export default async function HomePage() {
   const user = await requireUser();
-  const [stats, recent, series, news] = await Promise.all([
+  const [stats, recent, series, news, coach] = await Promise.all([
     getJournalStats(user.id),
     getTrades(user.id, { limit: 5 }),
     getRealizedSeries(user.id),
     getCachedPositionsNews(user.id),
+    getCoachSummary(user.id),
   ]);
 
   const name = user.displayName?.split(" ")[0] ?? "there";
@@ -61,6 +64,8 @@ export default async function HomePage() {
       ) : (
         <div className="lg:grid lg:grid-cols-3 lg:items-start lg:gap-5">
           <div className="space-y-4 lg:col-span-2">
+            {coach && <CoachCard initial={coach.summary} stale={coach.stale} />}
+
             <EquityPanel series={series} title="Realized P/L" />
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

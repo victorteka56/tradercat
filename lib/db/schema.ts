@@ -221,6 +221,23 @@ export const aiAnalyses = pgTable(
   }),
 );
 
+/**
+ * The cross-history AI coach summary — one per user, upserted. Unlike the
+ * per-trade review (ai_analyses, keyed by trade), this reads the whole
+ * history's behaviour metrics, so it lives on its own with the user as the key.
+ * We regenerate only when `inputHash` (a digest of the metrics) changes.
+ */
+export const coachSummaries = pgTable("coach_summaries", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  inputHash: text("input_hash").notNull(),
+  model: text("model").notNull(),
+  output: jsonb("output").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* ------------------------------ market data ------------------------------- */
 
 /**
