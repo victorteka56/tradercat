@@ -238,6 +238,18 @@ export const coachSummaries = pgTable("coach_summaries", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Fixed-window rate-limit counters. Server-only infra, not user data — the
+ * bucket key encodes action + user + time window, so a new window is simply a
+ * new row and old rows expire. Kept in Postgres rather than Redis to stay
+ * dependency-free and correct across serverless instances.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  count: integer("count").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 /* ------------------------------ market data ------------------------------- */
 
 /**

@@ -2,6 +2,7 @@
 
 import { requireUser } from "@/lib/auth";
 import { generateAiReview, type ReviewResult } from "@/lib/ai/trade-review";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 export type ReviewActionState =
   | { needsData: true }
@@ -19,5 +20,6 @@ export type ReviewActionState =
  */
 export async function fetchReview(tradeId: string): Promise<ReviewActionState> {
   const user = await requireUser();
+  await enforceRateLimit("ai_trade_review", user.id);
   return generateAiReview(user.id, tradeId);
 }

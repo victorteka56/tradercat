@@ -2,6 +2,7 @@
 
 import { requireUser } from "@/lib/auth";
 import { refreshCoachSummary } from "@/lib/ai/coach";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * Generate (or refresh) the cross-history coach summary and cache it. Called
@@ -10,5 +11,6 @@ import { refreshCoachSummary } from "@/lib/ai/coach";
  */
 export async function fetchCoachSummary() {
   const user = await requireUser();
+  await enforceRateLimit("ai_coach", user.id);
   return refreshCoachSummary(user.id);
 }

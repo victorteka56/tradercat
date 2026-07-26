@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { createConnectionPortalUrl } from "@/lib/snaptrade/client";
 import { disconnectBrokerage, syncBrokerageData } from "@/lib/snaptrade/sync";
 import { precomputeReviews } from "@/lib/ai/precompute";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 function originFromRequest(): string {
   const h = headers();
@@ -30,6 +31,7 @@ export async function connectBrokerage() {
 
 export async function syncBrokerage() {
   const user = await requireUser();
+  await enforceRateLimit("brokerage_sync", user.id);
   const outcome = await syncBrokerageData(user.id);
 
   // Precompute reviews for the trades this sync produced, in the background —
