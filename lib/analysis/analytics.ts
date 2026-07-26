@@ -16,6 +16,19 @@ export interface AnalyticsTrade {
   /** exit timestamp, epoch ms (null only for trades with no known close) */
   exitMs: number | null;
   holdingSeconds: number | null;
+  /** R-multiple, if the trader scored the trade's risk. Null otherwise. */
+  rMultiple: number | null;
+}
+
+/** R-multiple aggregates — only meaningful over trades the trader has scored. */
+export interface RStats {
+  scored: number;
+  /** average R across scored trades — expectancy in R terms */
+  avgR: number;
+  avgWinR: number;
+  avgLossR: number;
+  best: number;
+  worst: number;
 }
 
 /**
@@ -111,6 +124,8 @@ export interface Analytics {
   /** Every traded symbol, most-traded first. */
   symbols: Bucket[];
   distribution: DistBucket[];
+  /** R-multiple stats — null when the trader hasn't scored any trade's risk. */
+  rStats: RStats | null;
 }
 
 const usd0 = (n: number) =>
@@ -378,6 +393,26 @@ export function computeAnalytics(trades: AnalyticsTrade[]): Analytics | null {
     byHold,
     symbols: [...bySymbol].sort((a, b) => b.trades - a.trades),
     distribution,
+    rStats: computeRStats(trades),
+  };
+}
+
+/** R-multiple aggregates over the trades that carry an R. */
+function computeRStats(trades: AnalyticsTrade[]): RStats | null {
+  const rs = trades
+    .map((t) => t.rMultiple)
+    .filter((r): r is number => r != null);
+  if (rs.length === 0) return null;
+  const winsR = rs.filter((r) => r > 0);
+  const lossesR = rs.filter((r) => r < 0);
+  const mean = (a: number[]) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+  return {
+    scored: rs.length,
+    avgR: mean(rs),
+    avgWinR: mean(winsR),
+    avgLossR: mean(lossesR),
+    best: Math.max(...rs),
+    worst: Math.min(...rs),
   };
 }
 

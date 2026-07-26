@@ -25,6 +25,7 @@ import { ExcursionCard } from "@/components/journal/ExcursionCard";
 import { RunningPnlCard } from "@/components/journal/RunningPnlCard";
 import { TradeNotesCard } from "@/components/journal/TradeNotesCard";
 import { TradeTagsCard } from "@/components/journal/TradeTagsCard";
+import { RiskCard } from "@/components/journal/RiskCard";
 import { TradeAnalysisDrawer } from "@/components/journal/TradeAnalysisDrawer";
 import { getTradeChart, marketDataConfigured } from "@/lib/market/candles";
 import { computeExcursions } from "@/lib/analysis/excursions";
@@ -324,6 +325,26 @@ export default async function TradeDetailPage({
           {timingBlock}
         </div>
       </div>
+
+      {realized && (
+        <RiskCard
+          tradeId={trade.id}
+          kind={trade.kind}
+          avgEntryPrice={trade.avgEntryPrice}
+          openedQty={trade.openedQty}
+          netPnl={trade.netPnl}
+          initialStopHint={
+            trade.riskSource && trade.initialRiskPerUnit != null && trade.avgEntryPrice != null
+              ? String(
+                  Math.round((trade.avgEntryPrice - trade.initialRiskPerUnit) * 100) / 100,
+                )
+              : ""
+          }
+          savedRiskPerUnit={trade.initialRiskPerUnit}
+          savedRMultiple={trade.rMultiple}
+          hasRisk={Boolean(trade.riskSource)}
+        />
+      )}
 
       <TradeTagsCard tradeId={trade.id} initial={tradeTags} />
 

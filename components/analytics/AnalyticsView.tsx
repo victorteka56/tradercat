@@ -129,6 +129,11 @@ export function AnalyticsView({
           {/* One mosaic — behavioural findings first, then the breakdowns, all
               packed into two balanced columns so no card strands a gap. */}
           <div className="gap-3 pb-2 lg:columns-2">
+            {a.rStats && (
+              <div className="mb-3 break-inside-avoid">
+                <RCard r={a.rStats} />
+              </div>
+            )}
             {findings.map((card, i) => (
               <div key={`kf-${i}`} className="mb-3 break-inside-avoid">
                 {card}
@@ -204,4 +209,67 @@ function fmtHold(days: number | null): string {
   if (days < 1) return "<1d";
   if (days < 10) return `${days.toFixed(1)}d`;
   return `${Math.round(days)}d`;
+}
+
+const asR = (r: number) => `${r > 0 ? "+" : ""}${r.toFixed(2)}R`;
+
+/**
+ * R-multiple expectancy — the pro-desk read on edge. Average R across scored
+ * trades is expectancy per unit of risk: positive means the system pays after
+ * accounting for how much you put up. Shown only once the trader scores trades.
+ */
+function RCard({ r }: { r: NonNullable<ReturnType<typeof computeAnalytics>>["rStats"] }) {
+  if (!r) return null;
+  const up = r.avgR >= 0;
+  return (
+    <SurfaceCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between">
+        <h3 className="text-[14px] font-semibold text-ink">R-multiple expectancy</h3>
+        <span className="text-[11px] text-ink-faint">{r.scored} scored</span>
+      </div>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-ink-soft">
+        Average result per unit of risk — your edge, net of position size.
+      </p>
+      <div className="flex items-end gap-4">
+        <div>
+          <div
+            className={`tnum text-[30px] font-semibold leading-none tracking-tight ${
+              up ? "text-pos" : "text-neg"
+            }`}
+          >
+            {asR(r.avgR)}
+          </div>
+          <div className="mt-1 text-[11px] text-ink-soft">per trade</div>
+        </div>
+        <div className="flex-1 border-l border-line pl-4">
+          <Row label="Avg winner" value={asR(r.avgWinR)} tone="pos" />
+          <Row label="Avg loser" value={asR(r.avgLossR)} tone="neg" />
+          <Row label="Best / worst" value={`${asR(r.best)} / ${asR(r.worst)}`} />
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function Row({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "pos" | "neg";
+}) {
+  return (
+    <div className="flex items-center justify-between py-0.5">
+      <span className="text-[11.5px] text-ink-soft">{label}</span>
+      <span
+        className={`tnum text-[12.5px] font-semibold ${
+          tone === "pos" ? "text-pos" : tone === "neg" ? "text-neg" : "text-ink"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }

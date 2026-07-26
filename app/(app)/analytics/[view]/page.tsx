@@ -25,6 +25,7 @@ export default async function AnalyticsDetailPage({
       symbol: t.symbol,
       exitMs: t.exitAt ? new Date(t.exitAt).getTime() : null,
       holdingSeconds: t.holdingSeconds,
+      rMultiple: t.rMultiple,
     }));
 
   return <DimensionDetail view={params.view as DetailView} trades={trades} />;

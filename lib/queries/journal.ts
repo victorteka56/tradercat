@@ -47,6 +47,8 @@ export interface JournalTrade {
   /** Return on cost: netPnl / cost × 100. Null for open/incomplete/no-cost. */
   pnlPct: number | null;
   riskSource: "stop" | "manual" | "inferred" | null;
+  /** Risk per unit (per share) the trade was scored against — for R math. */
+  initialRiskPerUnit: number | null;
   mae: number | null;
   mfe: number | null;
   capturedPct: number | null;
@@ -102,6 +104,7 @@ function mapTrade(
         ? (Number(r.netPnl ?? "0") / Number(r.cost)) * 100
         : null,
     riskSource: r.riskSource,
+    initialRiskPerUnit: toNum(r.initialRiskPerUnit),
     mae: toNum(r.mae),
     mfe: toNum(r.mfe),
     capturedPct: toNum(r.capturedPct),

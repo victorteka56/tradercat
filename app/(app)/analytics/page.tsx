@@ -24,6 +24,7 @@ export default async function AnalyticsPage() {
       symbol: t.symbol,
       exitMs: t.exitAt ? new Date(t.exitAt).getTime() : null,
       holdingSeconds: t.holdingSeconds,
+      rMultiple: t.rMultiple,
     }));
 
   if (trades.length === 0) {
