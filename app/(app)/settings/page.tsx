@@ -22,18 +22,15 @@ const fmtDate = (d: Date | null): string =>
     ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "—";
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: { checkout?: string };
-}) {
+export default async function SettingsPage() {
   const user = await requireUser();
 
-  // Just back from Stripe Checkout — reconcile straight from Stripe so the
-  // upgrade shows up even if the webhook is delayed or (in dev) not forwarded.
-  if (searchParams.checkout === "success") {
-    await reconcileSubscription(user.id);
-  }
+  // Always reconcile from Stripe here — this is the one page that shows and
+  // manages the subscription, so it should reflect reality even when a change
+  // was made in the Stripe dashboard and the webhook didn't reach us. Cheap
+  // no-op when billing is off or the user has no customer. This corrects our
+  // row, which the app-wide entitlement gate then reads on the next load.
+  await reconcileSubscription(user.id);
   const [profile] = await db
     .select({ timezone: profiles.timezone })
     .from(profiles)
