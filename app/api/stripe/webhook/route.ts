@@ -67,6 +67,20 @@ export async function POST(req: Request) {
   return NextResponse.json({ received: true });
 }
 
+/**
+ * The current period end, robust across Stripe API versions: it lived on the
+ * subscription root through 2025-02, then moved onto the items. Read whichever
+ * is present so a newer account/CLI API version can't produce an Invalid Date.
+ */
+function periodEnd(sub: Stripe.Subscription): Date | null {
+  const s = sub as unknown as {
+    current_period_end?: number;
+    items?: { data?: { current_period_end?: number }[] };
+  };
+  const ts = s.current_period_end ?? s.items?.data?.[0]?.current_period_end;
+  return typeof ts === "number" ? new Date(ts * 1000) : null;
+}
+
 /** Map a Stripe Subscription onto our row, keyed by the userId in its metadata. */
 async function syncSubscription(sub: Stripe.Subscription): Promise<void> {
   const userId = sub.metadata?.userId;
@@ -82,7 +96,7 @@ async function syncSubscription(sub: Stripe.Subscription): Promise<void> {
     stripeSubscriptionId: sub.id,
     status: sub.status,
     priceId: sub.items.data[0]?.price.id ?? null,
-    currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    currentPeriodEnd: periodEnd(sub),
     cancelAtPeriodEnd: sub.cancel_at_period_end,
     updatedAt: new Date(),
   };

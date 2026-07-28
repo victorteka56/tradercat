@@ -7,12 +7,22 @@ const PUBLIC_ROUTES = ["/login", "/signup", "/auth"];
 /** Public SEO / metadata routes crawlers must reach without auth. */
 const PUBLIC_EXACT = new Set([
   "/",
+  "/privacy",
+  "/terms",
   "/robots.txt",
   "/sitemap.xml",
   "/manifest.webmanifest",
   "/llms.txt",
 ]);
-const PUBLIC_PREFIXES = ["/icon", "/apple-icon", "/opengraph-image", "/twitter-image"];
+const PUBLIC_PREFIXES = [
+  "/icon",
+  "/apple-icon",
+  "/opengraph-image",
+  "/twitter-image",
+  // Webhooks are called by third parties with no session — they verify their
+  // own signatures, so they must never be redirected to login.
+  "/api/stripe/webhook",
+];
 
 /**
  * Refreshes the auth session on every request and gates the app routes.
