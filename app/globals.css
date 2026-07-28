@@ -130,3 +130,58 @@ body {
     animation: none;
   }
 }
+
+/* ---------------------------- dark landing page ---------------------------- */
+
+/* Slow-breathing aurora blobs behind the hero. Colour is painted by the
+   element's background; this only drifts and pulses it. */
+@keyframes tc-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+.tc-aurora {
+  animation: tc-aurora 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.tc-aurora-slow {
+  animation-duration: 14s;
+  animation-delay: -4s;
+}
+
+/* Neon primary CTA on the dark landing — green core with a soft outer bloom. */
+.tc-neon-cta {
+  box-shadow:
+    0 0 0 1px rgba(43, 214, 143, 0.35),
+    0 4px 24px -4px rgba(43, 214, 143, 0.45),
+    0 12px 48px -8px rgba(43, 214, 143, 0.3);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.tc-neon-cta:hover {
+  box-shadow:
+    0 0 0 1px rgba(43, 214, 143, 0.55),
+    0 6px 32px -4px rgba(43, 214, 143, 0.6),
+    0 16px 64px -8px rgba(43, 214, 143, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Hairline glass panels used across the dark landing. */
+.tc-glass {
+  /* No backdrop-filter: over the blurred aurora it stalls compositors (and
+     low-end GPUs) for a difference that's invisible on near-black. */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-aurora,
+  .tc-aurora-slow {
+    animation: none;
+  }
+}

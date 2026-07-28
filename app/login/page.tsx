@@ -10,6 +10,7 @@ import {
   SubmitButton,
   useAuthForm,
 } from "@/components/auth/AuthForm";
+import { GoogleButton, AuthDivider } from "@/components/auth/GoogleButton";
 
 function LoginForm() {
   const [state, formAction] = useAuthForm(signIn);
@@ -17,7 +18,10 @@ function LoginForm() {
   const next = useSearchParams().get("next") ?? "/home";
 
   return (
-    <form action={formAction} className="space-y-3">
+    <div>
+      <GoogleButton next={next} />
+      <AuthDivider />
+      <form action={formAction} className="space-y-3">
       <input type="hidden" name="next" value={next} />
       <Field
         label="Email"
@@ -36,10 +40,11 @@ function LoginForm() {
 
       <FormMessage state={state} />
 
-      <div className="pt-2">
-        <SubmitButton>Sign in</SubmitButton>
-      </div>
-    </form>
+        <div className="pt-2">
+          <SubmitButton>Sign in</SubmitButton>
+        </div>
+      </form>
+    </div>
   );
 }
 
