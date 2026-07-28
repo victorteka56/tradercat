@@ -1,53 +1,26 @@
 import Link from "next/link";
-import {
-  Combine,
-  LineChart,
-  MessageSquareText,
-  BarChart3,
-  Activity,
-  ShieldCheck,
-  ArrowRight,
-} from "lucide-react";
-import { SurfaceCard } from "@/components/ui/SurfaceCard";
-import { FAQ, SITE_NAME, SITE_DESCRIPTION, jsonLd } from "@/lib/seo";
+import { ArrowRight } from "lucide-react";
+import { FAQ, SITE_NAME, jsonLd } from "@/lib/seo";
+
+/**
+ * The landing page. Deliberately dark — the one surface where the product gets
+ * to be theatrical — while the app itself stays light. Two rules hold it
+ * together: almost no copy (the app explains itself; this page seduces), and
+ * exactly one colour allowed to glow (the brand green; violet only as a
+ * whisper behind the AI line). Everything else is hairline glass on near-black.
+ */
+
+const INK = "#0A0D12";
+const TEXT = "#EDF1F5";
+const SOFT = "#98A2B3";
+const FAINT = "#5B6472";
+const GREEN = "#2BD68F";
 
 const FEATURES = [
-  {
-    Icon: Combine,
-    title: "Automatic trade reconstruction",
-    body: "Import a CSV or connect your brokerage. TraderCat groups thousands of raw fills back into the trades you actually made.",
-  },
-  {
-    Icon: LineChart,
-    title: "A chart for every trade",
-    body: "Each trade plotted on the underlying's price with your entry, exit, and a running P/L that shows the drawdown you sat through.",
-  },
-  {
-    Icon: MessageSquareText,
-    title: "Plain-English AI review",
-    body: "The numbers are computed first; the AI only explains them. No invented figures — every review is grounded in your real trade.",
-  },
-  {
-    Icon: BarChart3,
-    title: "Analytics that find your edge",
-    body: "Win rate, profit factor, payoff ratio, max drawdown, and breakdowns by instrument, direction, day of week and symbol.",
-  },
-  {
-    Icon: Activity,
-    title: "Behavioural insights",
-    body: "See whether you hold losers longer than winners, tilt after a loss, or lean on a handful of outlier trades.",
-  },
-  {
-    Icon: ShieldCheck,
-    title: "Private and secure",
-    body: "Your data is scoped to you, brokerage secrets are encrypted at rest, and your journal is never indexed.",
-  },
-];
-
-const STEPS = [
-  { n: "1", title: "Import", body: "Upload a broker CSV or connect your brokerage in a couple of clicks." },
-  { n: "2", title: "Review", body: "See every trade rebuilt, charted, and explained in plain English." },
-  { n: "3", title: "Improve", body: "Spot the patterns costing you money and fix what actually moves the needle." },
+  { title: "Rebuilt", body: "Raw broker fills become clean trades, automatically." },
+  { title: "Charted", body: "Entry to exit, on the price that made the trade." },
+  { title: "Reviewed", body: "Plain-English reviews, grounded in your numbers." },
+  { title: "Understood", body: "The habits behind your P/L, laid bare." },
 ];
 
 export default function LandingPage() {
@@ -58,143 +31,269 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd()) }}
       />
 
-      <div className="min-h-screen bg-bg text-ink">
-        <header className="mx-auto flex max-w-[1100px] items-center justify-between px-5 py-5">
+      <div
+        className="relative min-h-screen overflow-hidden antialiased"
+        style={{ background: INK, color: TEXT }}
+      >
+        {/* Aurora — one green bloom, one faint violet. Blurred far past
+            recognisability so they read as light, not shapes. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div
+            className="tc-aurora absolute left-1/2 top-[-260px] h-[560px] w-[820px] -translate-x-1/2 rounded-full"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(43,214,143,0.14), rgba(43,214,143,0.05) 45%, transparent 72%)",
+            }}
+          />
+          <div
+            className="tc-aurora tc-aurora-slow absolute right-[-180px] top-[220px] h-[420px] w-[520px] rounded-full"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(139,92,246,0.09), rgba(139,92,246,0.03) 45%, transparent 72%)",
+            }}
+          />
+          {/* Hairline horizon under the hero */}
+          <div
+            className="absolute left-1/2 top-[640px] h-px w-[min(1000px,90vw)] -translate-x-1/2"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
+            }}
+          />
+        </div>
+
+        <header className="relative mx-auto flex max-w-[1060px] items-center justify-between px-6 py-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-[16px] font-bold text-white">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[14px] font-bold"
+              style={{ background: TEXT, color: INK }}
+            >
               T
             </div>
-            <span className="text-[16px] font-semibold tracking-tight">{SITE_NAME}</span>
+            <span className="text-[15px] font-semibold tracking-tight">{SITE_NAME}</span>
           </div>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1.5">
             <Link
               href="/login"
-              className="rounded-full px-4 py-2 text-[14px] font-semibold text-ink-soft transition-colors hover:text-ink"
+              className="rounded-full px-4 py-2 text-[13.5px] font-medium transition-colors"
+              style={{ color: SOFT }}
             >
               Sign in
             </Link>
             <Link
               href="/signup"
-              className="rounded-full bg-ink px-4 py-2 text-[14px] font-semibold text-white transition-colors hover:bg-ink/90"
+              className="rounded-full px-4 py-2 text-[13.5px] font-semibold transition-opacity hover:opacity-90"
+              style={{ background: TEXT, color: INK }}
             >
               Get started
             </Link>
           </nav>
         </header>
 
-        <main className="mx-auto max-w-[1100px] px-5">
-          {/* Hero */}
-          <section className="pb-8 pt-10 text-center lg:pt-20">
-            <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-[12px] font-semibold text-ink-soft shadow-card">
-              Trading journal &amp; AI trade review
+        <main className="relative mx-auto max-w-[1060px] px-6">
+          {/* ------------------------------ hero ------------------------------ */}
+          <section className="pt-14 text-center lg:pt-24">
+            <p
+              className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-medium tracking-wide"
+              style={{
+                color: SOFT,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: GREEN, boxShadow: `0 0 8px ${GREEN}` }}
+              />
+              Now in open beta
             </p>
-            <h1 className="mx-auto max-w-[760px] text-[34px] font-bold leading-[1.08] tracking-[-0.02em] text-ink lg:text-[54px]">
-              The trading journal that explains every trade
+
+            <h1
+              className="font-display mx-auto max-w-[680px] text-[44px] font-semibold leading-[1.04] tracking-[-0.02em] lg:text-[72px]"
+            >
+              Every trade,
+              <br />
+              <span
+                style={{
+                  background: `linear-gradient(100deg, ${GREEN}, #7EE8C0 55%, ${GREEN})`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                }}
+              >
+                explained.
+              </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-[620px] text-[15px] leading-relaxed text-ink-soft lg:text-[17px]">
-              {SITE_DESCRIPTION}
+
+            <p
+              className="mx-auto mt-6 max-w-[440px] text-[15.5px] leading-relaxed lg:text-[16.5px]"
+              style={{ color: SOFT }}
+            >
+              Connect your broker. TraderCat rebuilds every trade, charts it, and
+              tells you what&apos;s working — in plain English.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/signup"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-7 text-[15px] font-semibold text-white transition-colors hover:bg-ink/90"
+                className="tc-neon-cta inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold"
+                style={{ background: GREEN, color: "#052A1C" }}
               >
-                Start your journal <ArrowRight size={18} />
+                Start free <ArrowRight size={17} />
               </Link>
               <Link
                 href="/login"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-line bg-surface px-7 text-[15px] font-semibold text-ink transition-colors hover:bg-surface-2"
+                className="inline-flex h-12 items-center justify-center rounded-full px-7 text-[15px] font-medium transition-colors hover:text-white"
+                style={{ color: SOFT }}
               >
                 Sign in
               </Link>
             </div>
+            <p className="mt-4 text-[12px]" style={{ color: FAINT }}>
+              14-day free trial · no card required
+            </p>
           </section>
 
-          {/* Features */}
-          <section className="py-14" aria-labelledby="features-heading">
-            <h2 id="features-heading" className="text-center text-[24px] font-bold tracking-tight lg:text-[30px]">
-              Everything you need to review your trading
-            </h2>
-            <p className="mx-auto mt-3 max-w-[560px] text-center text-[14.5px] text-ink-soft">
-              From raw broker fills to the behavioural patterns behind your P/L.
-            </p>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map(({ Icon, title, body }) => (
-                <SurfaceCard key={title} className="p-5">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-ink/[0.06] text-ink">
-                    <Icon size={20} strokeWidth={2} />
-                  </span>
-                  <h3 className="mt-4 text-[16px] font-semibold text-ink">{title}</h3>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{body}</p>
-                </SurfaceCard>
-              ))}
+          {/* --------------------------- product hint -------------------------- */}
+          <section className="mx-auto mt-16 max-w-[760px] lg:mt-20" aria-hidden>
+            <div className="tc-glass rounded-3xl p-5 lg:p-7">
+              {/* Equity curve — a real shape (drawdown sat through, then the
+                  recovery) drawn once, glowing once. */}
+              <svg viewBox="0 0 640 190" className="w-full" role="img" aria-label="">
+                <defs>
+                  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.18" />
+                    <stop offset="100%" stopColor={GREEN} stopOpacity="0" />
+                  </linearGradient>
+                  <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
+                    <feGaussianBlur stdDeviation="6" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path
+                  d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30"
+                  fill="none"
+                  stroke={GREEN}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  filter="url(#glow)"
+                />
+                <path
+                  d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30 L632 190 L8 190 Z"
+                  fill="url(#fade)"
+                />
+                <circle cx="262" cy="142" r="4" fill={INK} stroke={GREEN} strokeWidth="2" />
+                <circle cx="632" cy="30" r="4" fill={GREEN} />
+                <text x="252" y="168" fontSize="11" fill={FAINT} fontFamily="inherit">
+                  the drawdown you sat through
+                </text>
+              </svg>
+
+              {/* One line of the product's voice — violet only whispers here. */}
+              <div
+                className="mt-4 flex items-start gap-3 rounded-2xl px-4 py-3.5"
+                style={{
+                  background: "rgba(139,92,246,0.07)",
+                  border: "1px solid rgba(139,92,246,0.18)",
+                }}
+              >
+                <span
+                  className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: "#8B5CF6", boxShadow: "0 0 10px rgba(139,92,246,0.8)" }}
+                />
+                <p className="text-[13.5px] leading-relaxed" style={{ color: TEXT }}>
+                  You sat through a $1,240 drawdown before this paid — the win was
+                  real, but the risk that bought it was bigger than it looks.
+                </p>
+              </div>
             </div>
           </section>
 
-          {/* How it works */}
-          <section className="py-14" aria-labelledby="how-heading">
-            <h2 id="how-heading" className="text-center text-[24px] font-bold tracking-tight lg:text-[30px]">
-              How it works
-            </h2>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {STEPS.map((s) => (
-                <div key={s.n} className="text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-[18px] font-bold text-white">
-                    {s.n}
+          {/* ----------------------------- features ---------------------------- */}
+          <section className="mx-auto max-w-[880px] py-20 lg:py-24">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-4">
+              {FEATURES.map((f, i) => (
+                <div key={f.title}>
+                  <div
+                    className="text-[11px] font-semibold tracking-[0.14em]"
+                    style={{ color: GREEN }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
                   </div>
-                  <h3 className="mt-4 text-[17px] font-semibold text-ink">{s.title}</h3>
-                  <p className="mx-auto mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-ink-soft">
-                    {s.body}
+                  <h3 className="font-display mt-2 text-[19px] font-medium">{f.title}</h3>
+                  <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: SOFT }}>
+                    {f.body}
                   </p>
                 </div>
               ))}
             </div>
+            <p
+              className="mt-14 text-center text-[12.5px] tracking-wide"
+              style={{ color: FAINT }}
+            >
+              Read-only broker access &nbsp;·&nbsp; Encrypted &nbsp;·&nbsp; Export
+              anytime
+            </p>
           </section>
 
-          {/* FAQ */}
-          <section className="py-14" aria-labelledby="faq-heading">
-            <h2 id="faq-heading" className="text-center text-[24px] font-bold tracking-tight lg:text-[30px]">
-              Frequently asked questions
+          {/* ------------------------------- FAQ ------------------------------- */}
+          <section className="mx-auto max-w-[640px] pb-20" aria-labelledby="faq-heading">
+            <h2
+              id="faq-heading"
+              className="font-display text-center text-[24px] font-medium tracking-tight"
+            >
+              Questions
             </h2>
-            <div className="mx-auto mt-8 max-w-[720px] space-y-3">
+            <div className="mt-8 space-y-2.5">
               {FAQ.map((f) => (
-                <SurfaceCard key={f.q} as="article" className="p-5">
-                  <h3 className="text-[15.5px] font-semibold text-ink">{f.q}</h3>
-                  <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{f.a}</p>
-                </SurfaceCard>
+                <details key={f.q} className="tc-glass group rounded-2xl px-5 py-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[14.5px] font-medium [&::-webkit-details-marker]:hidden">
+                    {f.q}
+                    <span
+                      className="text-[18px] leading-none transition-transform group-open:rotate-45"
+                      style={{ color: FAINT }}
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-[13.5px] leading-relaxed" style={{ color: SOFT }}>
+                    {f.a}
+                  </p>
+                </details>
               ))}
             </div>
           </section>
 
-          {/* CTA */}
-          <section className="pb-20 pt-6">
-            <SurfaceCard className="mx-auto max-w-[720px] p-10 text-center">
-              <h2 className="text-[24px] font-bold tracking-tight text-ink lg:text-[30px]">
-                Start your trading journal today
-              </h2>
-              <p className="mx-auto mt-3 max-w-[440px] text-[14.5px] text-ink-soft">
-                Import your trades and see what your history has been trying to tell you.
-              </p>
-              <Link
-                href="/signup"
-                className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-7 text-[15px] font-semibold text-white transition-colors hover:bg-ink/90"
-              >
-                Get started free <ArrowRight size={18} />
-              </Link>
-            </SurfaceCard>
+          {/* ------------------------------- CTA ------------------------------- */}
+          <section className="pb-24 text-center">
+            <h2 className="font-display mx-auto max-w-[480px] text-[28px] font-medium leading-snug tracking-tight lg:text-[34px]">
+              See what your trading has been telling you.
+            </h2>
+            <Link
+              href="/signup"
+              className="tc-neon-cta mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold"
+              style={{ background: GREEN, color: "#052A1C" }}
+            >
+              Start free <ArrowRight size={17} />
+            </Link>
           </section>
         </main>
 
-        <footer className="border-t border-line">
-          <div className="mx-auto flex max-w-[1100px] flex-col items-center justify-between gap-3 px-5 py-8 text-[13px] text-ink-faint sm:flex-row">
+        <footer style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div
+            className="mx-auto flex max-w-[1060px] flex-col items-center justify-between gap-3 px-6 py-8 text-[13px] sm:flex-row"
+            style={{ color: FAINT }}
+          >
             <span>
               © {new Date().getFullYear()} {SITE_NAME}
             </span>
             <nav className="flex flex-wrap gap-x-5 gap-y-2">
-              <Link href="/privacy" className="hover:text-ink">Privacy</Link>
-              <Link href="/terms" className="hover:text-ink">Terms</Link>
-              <Link href="/login" className="hover:text-ink">Sign in</Link>
-              <Link href="/signup" className="hover:text-ink">Get started</Link>
+              <Link href="/privacy" className="transition-colors hover:text-white">Privacy</Link>
+              <Link href="/terms" className="transition-colors hover:text-white">Terms</Link>
+              <Link href="/login" className="transition-colors hover:text-white">Sign in</Link>
             </nav>
           </div>
         </footer>

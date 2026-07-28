@@ -26,8 +26,13 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
   return {
     id: user.id,
     email: user.email ?? "",
+    // Email signups set display_name; OAuth providers (Google) send full_name
+    // or name. Read them in that order so every path gets a real greeting.
     displayName:
-      (user.user_metadata?.display_name as string | undefined) ?? null,
+      (user.user_metadata?.display_name as string | undefined) ??
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
     createdAt: user.created_at ?? new Date().toISOString(),
   };
 });

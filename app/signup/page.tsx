@@ -8,6 +8,7 @@ import {
   SubmitButton,
   useAuthForm,
 } from "@/components/auth/AuthForm";
+import { GoogleButton, AuthDivider } from "@/components/auth/GoogleButton";
 
 export default function SignupPage() {
   const [state, formAction] = useAuthForm(signUp);
@@ -26,6 +27,9 @@ export default function SignupPage() {
             Import your trades and see what to review next.
           </p>
         </div>
+
+        <GoogleButton />
+        <AuthDivider />
 
         <form action={formAction} className="space-y-3">
           <Field
