@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { profiles } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getEntitlement } from "@/lib/subscription";
+import { reconcileSubscription } from "@/lib/stripe/reconcile";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import {
   ManageBillingButton,
@@ -21,8 +22,18 @@ const fmtDate = (d: Date | null): string =>
     ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "—";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { checkout?: string };
+}) {
   const user = await requireUser();
+
+  // Just back from Stripe Checkout — reconcile straight from Stripe so the
+  // upgrade shows up even if the webhook is delayed or (in dev) not forwarded.
+  if (searchParams.checkout === "success") {
+    await reconcileSubscription(user.id);
+  }
   const [profile] = await db
     .select({ timezone: profiles.timezone })
     .from(profiles)
