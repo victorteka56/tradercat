@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
@@ -66,7 +67,68 @@ export async function startCheckout() {
   if (url) redirect(url);
 }
 
-/** Open the Stripe billing portal so the user can manage or cancel. */
+/** Mirror a Stripe subscription onto our row immediately (don't wait on the webhook). */
+async function syncFromStripe(userId: string, subId: string) {
+  const sub = await stripe!.subscriptions.retrieve(subId);
+  await db
+    .update(subscriptions)
+    .set({
+      status: sub.status,
+      cancelAtPeriodEnd: sub.cancel_at_period_end,
+      currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      priceId: sub.items.data[0]?.price.id ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.userId, userId));
+}
+
+async function currentSubId(userId: string): Promise<string> {
+  const [sub] = await db
+    .select({ id: subscriptions.stripeSubscriptionId })
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .limit(1);
+  if (!sub?.id) throw new Error("No active subscription found.");
+  return sub.id;
+}
+
+/**
+ * Cancel at period end — the user keeps what they paid for until the period
+ * ends, then it lapses. Done via the API so it happens inside the app, no
+ * Stripe portal round-trip. We sync our row right away so the UI updates now.
+ */
+export async function cancelSubscription() {
+  const user = await requireUser();
+  if (!stripe) throw new Error("Billing isn't configured.");
+  try {
+    const subId = await currentSubId(user.id);
+    await stripe.subscriptions.update(subId, { cancel_at_period_end: true });
+    await syncFromStripe(user.id, subId);
+  } catch (err) {
+    captureError(err, { op: "stripe_cancel", userId: user.id });
+    throw new Error("Couldn't cancel. Please try again.");
+  }
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Undo a pending cancellation — keep the subscription going. */
+export async function resumeSubscription() {
+  const user = await requireUser();
+  if (!stripe) throw new Error("Billing isn't configured.");
+  try {
+    const subId = await currentSubId(user.id);
+    await stripe.subscriptions.update(subId, { cancel_at_period_end: false });
+    await syncFromStripe(user.id, subId);
+  } catch (err) {
+    captureError(err, { op: "stripe_resume", userId: user.id });
+    throw new Error("Couldn't resume. Please try again.");
+  }
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Open the Stripe billing portal so the user can manage payment methods. */
 export async function openBillingPortal() {
   const user = await requireUser();
   if (!stripe) throw new Error("Billing isn't configured.");

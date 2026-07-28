@@ -5,13 +5,21 @@ import { profiles } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getEntitlement } from "@/lib/subscription";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
-import { ManageBillingButton } from "@/components/billing/BillingButtons";
+import {
+  ManageBillingButton,
+  CancelResumeControls,
+} from "@/components/billing/BillingButtons";
 import {
   ProfileSection,
   TimezoneSection,
   ExportSection,
   DangerSection,
 } from "@/components/settings/SettingsSections";
+
+const fmtDate = (d: Date | null): string =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
 
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -35,7 +43,9 @@ export default async function SettingsPage() {
             <h2 className="text-[14px] font-semibold text-ink">Subscription</h2>
             <p className="mb-3 mt-0.5 text-[12px] text-ink-soft">
               {ent.status === "active" &&
-                `Pro — active${ent.cancelAtPeriodEnd ? " (cancels at period end)" : ""}.`}
+                (ent.cancelAtPeriodEnd
+                  ? `Pro — cancels on ${fmtDate(ent.currentPeriodEnd)}. You keep access until then.`
+                  : `Pro — active. Renews ${fmtDate(ent.currentPeriodEnd)}.`)}
               {ent.status === "trialing" &&
                 (ent.isSubscribed
                   ? "Pro — in trial."
@@ -43,8 +53,12 @@ export default async function SettingsPage() {
               {ent.status === "past_due" && "Payment failed — update it to keep Pro."}
               {ent.status === "expired" && "Your trial has ended."}
             </p>
+
             {ent.isSubscribed ? (
-              <ManageBillingButton />
+              <div className="flex flex-col gap-3">
+                <CancelResumeControls cancelling={ent.cancelAtPeriodEnd} />
+                <ManageBillingButton />
+              </div>
             ) : (
               <Link
                 href="/pricing"
