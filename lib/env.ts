@@ -35,6 +35,13 @@ const schema = z.object({
   /** Optional — trade-review narration. Absent = the AI feature is simply off. */
   DEEPSEEK_API_KEY: z.string().optional().default(""),
 
+  // --- Stripe (server-only). All optional: absent = billing is simply off and
+  //     everyone stays on the free trial. Set to turn subscriptions on. ---
+  STRIPE_SECRET_KEY: z.string().optional().default(""),
+  STRIPE_WEBHOOK_SECRET: z.string().optional().default(""),
+  /** The Price ID for the Pro monthly plan (Stripe → Product → Price). */
+  STRIPE_PRICE_ID: z.string().optional().default(""),
+
   /** 32 bytes, base64. Encrypts provider secrets at rest. */
   ENCRYPTION_KEY: z
     .string({
@@ -54,6 +61,9 @@ const parsed = schema.safeParse({
   SNAPTRADE_CLIENT_ID: process.env.SNAPTRADE_CLIENT_ID,
   SNAPTRADE_CONSUMER_KEY: process.env.SNAPTRADE_CONSUMER_KEY,
   DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID,
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 });
 
@@ -71,3 +81,6 @@ export const env = {
   ...parsed.data,
   DIRECT_URL: parsed.data.DIRECT_URL || parsed.data.DATABASE_URL,
 };
+
+/** Billing is live only once the secret key and price are configured. */
+export const stripeConfigured = Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_ID);

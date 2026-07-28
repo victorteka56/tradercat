@@ -239,6 +239,26 @@ export const coachSummaries = pgTable("coach_summaries", {
 });
 
 /**
+ * Stripe subscription state, mirrored from webhooks — one row per user. The app
+ * reads this (never Stripe live) to decide entitlement. Absent row = the user
+ * is on the app-level free trial or has never subscribed.
+ */
+export const subscriptions = pgTable("subscriptions", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  /** trialing | active | past_due | canceled | incomplete | unpaid */
+  status: text("status"),
+  priceId: text("price_id"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Fixed-window rate-limit counters. Server-only infra, not user data — the
  * bucket key encodes action + user + time window, so a new window is simply a
  * new row and old rows expire. Kept in Postgres rather than Redis to stay
