@@ -1,5 +1,8 @@
 import type { Excursions } from "@/lib/analysis/excursions";
-import type { TradeReview } from "./trade-review";
+import type { FillsSummary, RunSummary, TradeReview } from "./trade-review";
+
+const money = (n: number) =>
+  `$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 /**
  * A solid trade review with no LLM — built entirely from the computed numbers.
@@ -19,6 +22,8 @@ export function fallbackReview(
   contractExit: number | null,
   holdingLabel: string,
   e: Excursions,
+  run: RunSummary | null = null,
+  fills: FillsSummary | null = null,
 ): TradeReview {
   const won = netPnl >= 0;
   const dir = e.thesis === "bullish" ? "rise" : "fall";
@@ -49,6 +54,22 @@ export function fallbackReview(
 
   const observations: TradeReview["observations"] = [];
 
+  // Execution first when it shaped the result — averaging down into a losing
+  // position is usually the most useful thing to surface.
+  if (fills?.averagedDown) {
+    observations.push({
+      label: "Averaged down",
+      detail: `You added to the position at a worse price than your first entry${
+        fills.addWorsePct != null ? ` (about ${fills.addWorsePct}% worse)` : ""
+      }, as ${symbol} kept moving against the trade${won ? "" : " — and it didn't recover"}.`,
+    });
+  } else if (fills?.scaledOut) {
+    observations.push({
+      label: "Scaled out",
+      detail: `You closed the position across ${fills.exits.length} separate exits rather than all at once.`,
+    });
+  }
+
   if (e.entryPositionPct != null) {
     const where =
       e.entryPositionPct <= 33 ? "near the low" : e.entryPositionPct >= 67 ? "near the high" : "around the middle";
@@ -65,20 +86,40 @@ export function fallbackReview(
     });
   }
 
-  observations.push({
-    label: "Worst point",
-    detail:
-      e.adverseExcursionPct < 0.05
-        ? `${symbol} barely moved against you during the hold.`
-        : `At its worst, ${symbol} moved ${e.adverseExcursionPct}% against the trade before you closed.`,
-  });
+  // Prefer the position's own dollar P/L journey — it's the most concrete story
+  // of the drawdown sat through or the gains given back. Fall back to the
+  // underlying's % move only when we have no running-P/L figures.
+  const about = run?.estimated ? "about " : "";
+  const gaveBackShare = run && run.peak > 0 ? run.giveback / run.peak : 0;
+
+  if (run && won && run.peakBeforeExit && gaveBackShare >= 0.3 && run.giveback >= 1) {
+    observations.push({
+      label: "Gave back gains",
+      detail: `You were ${about}up ${money(run.peak)} at the best point, then gave back ${about}${money(run.giveback)} before closing at ${money(netPnl)}.`,
+    });
+  } else if (run && run.worst < -0.5) {
+    observations.push({
+      label: won ? "Sat through drawdown" : "Deepest drawdown",
+      detail: `The position was ${about}down ${money(run.worst)} at its worst${won ? " before recovering" : ""}.`,
+    });
+  } else {
+    observations.push({
+      label: "Worst point",
+      detail:
+        e.adverseExcursionPct < 0.05
+          ? `${symbol} barely moved against you during the hold.`
+          : `At its worst, ${symbol} moved ${e.adverseExcursionPct}% against the trade before you closed.`,
+    });
+  }
 
   const toReview =
-    e.capturedPct != null && e.capturedPct < 60 && won
+    run && won && run.peakBeforeExit && gaveBackShare >= 0.4 && run.giveback >= 1
+      ? `You gave back ${about}${money(run.giveback)} of a ${money(run.peak)} peak — worth noticing what kept the trade open past its high.`
+      : e.capturedPct != null && e.capturedPct < 60 && won
       ? `${symbol} kept moving in your favour after you exited — worth noticing what prompted the exit.`
       : !e.directionCorrect
       ? `The share price moved against the trade the whole way — worth reviewing the entry timing.`
       : null;
 
-  return { headline, whatHappened, observations, toReview };
+  return { headline, whatHappened, observations: observations.slice(0, 4), toReview };
 }

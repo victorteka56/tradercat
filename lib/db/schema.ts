@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -125,7 +126,14 @@ export const brokerageAccounts = pgTable(
     number: text("number"),
     institutionName: text("institution_name"),
     currency: text("currency"),
+    /**
+     * TOTAL market value of the account — cash plus every holding — exactly as
+     * the brokerage reports it. This is NOT spendable cash; adding it to the
+     * positions total would count every holding twice.
+     */
     balance: numeric("balance", { precision: 20, scale: 2 }),
+    /** Settleable cash only. Can be negative on a margin account. */
+    cash: numeric("cash", { precision: 20, scale: 2 }),
     /** SnapTrade sync_status.transactions.initial_sync_completed. */
     transactionsSynced: timestamp("transactions_synced_at", { withTimezone: true }),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
@@ -158,6 +166,11 @@ export const positions = pgTable(
     optionType: optionTypeEnum("option_type"),
     strike: numeric("strike", { precision: 20, scale: 8 }),
     expiry: timestamp("expiry", { withTimezone: true }),
+    /**
+     * SnapTrade security type code — `cs` common stock, `crypto`, `et` ETF, etc.
+     * Drives the asset-class split; `kind` alone can't tell crypto from equity.
+     */
+    securityType: text("security_type"),
     quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(),
     averageCost: numeric("average_cost", { precision: 20, scale: 8 }),
     lastPrice: numeric("last_price", { precision: 20, scale: 8 }),
@@ -208,6 +221,55 @@ export const aiAnalyses = pgTable(
   }),
 );
 
+/**
+ * The cross-history AI coach summary — one per user, upserted. Unlike the
+ * per-trade review (ai_analyses, keyed by trade), this reads the whole
+ * history's behaviour metrics, so it lives on its own with the user as the key.
+ * We regenerate only when `inputHash` (a digest of the metrics) changes.
+ */
+export const coachSummaries = pgTable("coach_summaries", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  inputHash: text("input_hash").notNull(),
+  model: text("model").notNull(),
+  output: jsonb("output").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Stripe subscription state, mirrored from webhooks — one row per user. The app
+ * reads this (never Stripe live) to decide entitlement. Absent row = the user
+ * is on the app-level free trial or has never subscribed.
+ */
+export const subscriptions = pgTable("subscriptions", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  /** trialing | active | past_due | canceled | incomplete | unpaid */
+  status: text("status"),
+  priceId: text("price_id"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Fixed-window rate-limit counters. Server-only infra, not user data — the
+ * bucket key encodes action + user + time window, so a new window is simply a
+ * new row and old rows expire. Kept in Postgres rather than Redis to stay
+ * dependency-free and correct across serverless instances.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  count: integer("count").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 /* ------------------------------ market data ------------------------------- */
 
 /**
@@ -237,6 +299,22 @@ export const priceCandles = pgTable(
   }),
 );
 
+/**
+ * Cached ticker news, keyed by the underlying symbol and SHARED across every
+ * user — AAPL news is identical for everyone holding it, so we fetch once per
+ * symbol and serve everyone from here. `demand` (distinct current holders) and
+ * `fetchedAt` drive refresh priority; the whole point is minimal upstream calls.
+ */
+export const symbolNews = pgTable("symbol_news", {
+  symbol: text("symbol").primaryKey(),
+  /** Normalised articles, newest first. Null until the first fetch. */
+  articles: jsonb("articles"),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+  /** Distinct users currently holding it — refresh priority for a future cron. */
+  demand: integer("demand").notNull().default(0),
+  error: text("error"),
+});
+
 /* -------------------------------- profiles -------------------------------- */
 
 export const profiles = pgTable("profiles", {
@@ -246,6 +324,8 @@ export const profiles = pgTable("profiles", {
   displayName: text("display_name"),
   traderStyle: text("trader_style"),
   timezone: text("timezone").notNull().default("America/New_York"),
+  /** Journal layout preference: "table" or "calendar". */
+  journalView: text("journal_view").notNull().default("table"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -405,6 +485,14 @@ export const trades = pgTable(
     optionType: optionTypeEnum("option_type"),
     strike: numeric("strike", { precision: 20, scale: 8 }),
     expiry: timestamp("expiry", { withTimezone: true }),
+
+    /**
+     * True when the trade is missing its opening fills — the position was opened
+     * before the broker feed's history window, so we see only the closing side.
+     * Cost basis is unknown, so its P/L is not reliable and it's excluded from
+     * totals. Kept and shown (flagged) rather than dropped.
+     */
+    incomplete: boolean("incomplete").notNull().default(false),
 
     openedQty: numeric("opened_qty", { precision: 20, scale: 8 }).notNull().default("0"),
     closedQty: numeric("closed_qty", { precision: 20, scale: 8 }).notNull().default("0"),

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, journal-analytics-overhaul]
+  pull_request:
+
+# Static checks + unit tests only — no DB or secrets needed, so CI is fast and
+# runs on every push and PR. The tests cover the pure money math (trade
+# reconstruction, analytics); typecheck and lint guard the rest.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:ci

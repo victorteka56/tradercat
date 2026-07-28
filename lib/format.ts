@@ -82,6 +82,17 @@ export const dateTimeLabel = (d: Date | string | null | undefined): string => {
   return t ? `${dayLabel(d)} · ${t}` : dayLabel(d);
 };
 
+/** Compact money for dense surfaces: +$3.36K, -$1.2K, +$940. */
+export const usdCompact = (n: number): string => {
+  const sign = n < 0 ? "-" : "+";
+  const a = Math.abs(n);
+  if (a >= 1000) {
+    const k = a / 1000;
+    return `${sign}$${k >= 100 ? Math.round(k) : k.toFixed(k >= 10 ? 1 : 2)}K`;
+  }
+  return `${sign}$${Math.round(a)}`;
+};
+
 export const holdingLabel = (seconds: number) => {
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;

@@ -8,6 +8,8 @@ export interface SessionUser {
   id: string;
   email: string;
   displayName: string | null;
+  /** Account creation time — drives the app-level free trial window. */
+  createdAt: string;
 }
 
 /**
@@ -26,6 +28,7 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
     email: user.email ?? "",
     displayName:
       (user.user_metadata?.display_name as string | undefined) ?? null,
+    createdAt: user.created_at ?? new Date().toISOString(),
   };
 });
 

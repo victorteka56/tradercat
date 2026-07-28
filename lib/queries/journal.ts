@@ -1,12 +1,15 @@
 import "server-only";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   brokerageAccounts,
   fills,
   importBatches,
+  tags,
   tradeLegs,
+  tradeNotes,
+  tradeTags,
   trades,
 } from "@/lib/db/schema";
 
@@ -34,21 +37,36 @@ export interface JournalTrade {
   avgExitPrice: number | null;
   cost: number;
   proceeds: number;
+  fees: number;
+  grossPnl: number | null;
   netPnl: number;
   entryAt: Date | null;
   exitAt: Date | null;
   holdingSeconds: number | null;
   rMultiple: number | null;
+  /** Return on cost: netPnl / cost × 100. Null for open/incomplete/no-cost. */
+  pnlPct: number | null;
   riskSource: "stop" | "manual" | "inferred" | null;
+  /** Risk per unit (per share) the trade was scored against — for R math. */
+  initialRiskPerUnit: number | null;
   mae: number | null;
   mfe: number | null;
   capturedPct: number | null;
   /** Where this trade came from — drives the broker badge. */
   source: "robinhood_csv" | "snaptrade" | "other_csv";
   brokerName: string | null;
+  /** Opening fills missing → P/L unreliable, excluded from totals. */
+  incomplete: boolean;
 }
 
 const toNum = (v: string | null): number | null => (v === null ? null : Number(v));
+
+/**
+ * A trade needs at least this much cost basis for a return % to mean anything.
+ * A few cents of basis (a fractional reinvested share) divides into a real
+ * dollar figure to produce absurd four-digit percentages, so we suppress those.
+ */
+const MIN_COST_BASIS = 1;
 
 function mapTrade(
   r: typeof trades.$inferSelect,
@@ -57,6 +75,7 @@ function mapTrade(
   return {
     source: r.source,
     brokerName,
+    incomplete: r.incomplete,
     id: r.id,
     symbol: r.symbol,
     description: r.description,
@@ -72,12 +91,20 @@ function mapTrade(
     avgExitPrice: toNum(r.avgExitPrice),
     cost: Number(r.cost),
     proceeds: Number(r.proceeds),
+    fees: Number(r.fees ?? "0"),
+    grossPnl: r.grossPnl === null ? null : Number(r.grossPnl),
     netPnl: Number(r.netPnl ?? "0"),
     entryAt: r.entryAt,
     exitAt: r.exitAt,
     holdingSeconds: r.holdingSeconds,
     rMultiple: toNum(r.rMultiple),
+    // Return on cost — only meaningful for a completed trade with a real cost.
+    pnlPct:
+      !r.incomplete && r.status === "closed" && Number(r.cost) >= MIN_COST_BASIS
+        ? (Number(r.netPnl ?? "0") / Number(r.cost)) * 100
+        : null,
     riskSource: r.riskSource,
+    initialRiskPerUnit: toNum(r.initialRiskPerUnit),
     mae: toNum(r.mae),
     mfe: toNum(r.mfe),
     capturedPct: toNum(r.capturedPct),
@@ -94,7 +121,9 @@ export async function getTrades(
     // Left join: CSV-imported trades have no account and must still appear.
     .leftJoin(brokerageAccounts, eq(brokerageAccounts.id, trades.accountId))
     .where(eq(trades.userId, userId))
-    .orderBy(desc(sql`coalesce(${trades.exitAt}, ${trades.entryAt})`))
+    // Latest first; trades with no known date sort last, not first (Postgres
+    // defaults DESC to NULLS FIRST, which floated dateless trades to the top).
+    .orderBy(sql`coalesce(${trades.exitAt}, ${trades.entryAt}) desc nulls last`)
     .limit(opts.limit ?? 2000);
   return rows.map((r) => mapTrade(r.trade, r.brokerName));
 }
@@ -112,6 +141,120 @@ export async function getTradeById(
     .where(and(eq(trades.id, tradeId), eq(trades.userId, userId)))
     .limit(1);
   return rows[0] ? mapTrade(rows[0].trade, rows[0].brokerName) : null;
+}
+
+/** The user's free-text note for a trade ("" when none). One note per trade. */
+export async function getTradeNote(
+  userId: string,
+  tradeId: string,
+): Promise<string> {
+  const [row] = await db
+    .select({ body: tradeNotes.body })
+    .from(tradeNotes)
+    .where(and(eq(tradeNotes.userId, userId), eq(tradeNotes.tradeId, tradeId)))
+    .orderBy(desc(tradeNotes.createdAt))
+    .limit(1);
+  return row?.body ?? "";
+}
+
+export type TagKind = "setup" | "mistake" | "emotion" | "custom";
+
+export interface TradeTag {
+  id: string;
+  name: string;
+  kind: TagKind;
+}
+
+/** Tags attached to one trade. */
+export async function getTradeTags(userId: string, tradeId: string): Promise<TradeTag[]> {
+  const rows = await db
+    .select({ id: tags.id, name: tags.name, kind: tags.kind })
+    .from(tradeTags)
+    .innerJoin(tags, eq(tags.id, tradeTags.tagId))
+    .where(and(eq(tradeTags.userId, userId), eq(tradeTags.tradeId, tradeId)))
+    .orderBy(tags.kind, tags.name);
+  return rows as TradeTag[];
+}
+
+/** Every tag the user has ever created, with how many trades carry it. */
+export async function listUserTags(
+  userId: string,
+): Promise<(TradeTag & { uses: number })[]> {
+  const rows = await db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      kind: tags.kind,
+      uses: sql<string>`count(${tradeTags.tradeId})`,
+    })
+    .from(tags)
+    .leftJoin(tradeTags, eq(tradeTags.tagId, tags.id))
+    .where(eq(tags.userId, userId))
+    .groupBy(tags.id, tags.name, tags.kind)
+    .orderBy(desc(sql`count(${tradeTags.tradeId})`), tags.name);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind as TagKind,
+    uses: Number(r.uses),
+  }));
+}
+
+export interface TagPerformance {
+  id: string;
+  name: string;
+  kind: TagKind;
+  trades: number;
+  wins: number;
+  winRate: number;
+  netPnl: number;
+  /** Average $ per trade — expectancy for this tag. */
+  expectancy: number;
+}
+
+/**
+ * Per-tag performance over realized trades — the payoff of tagging: "this setup
+ * makes money, this mistake costs you." Closed, complete trades only, so the P/L
+ * is trustworthy. Computed in SQL for exact numeric.
+ */
+export async function getTagPerformance(userId: string): Promise<TagPerformance[]> {
+  const rows = await db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      kind: tags.kind,
+      trades: sql<string>`count(*)`,
+      wins: sql<string>`count(*) filter (where ${trades.netPnl} > 0)`,
+      netPnl: sql<string>`coalesce(sum(${trades.netPnl}), 0)`,
+    })
+    .from(tradeTags)
+    .innerJoin(tags, eq(tags.id, tradeTags.tagId))
+    .innerJoin(trades, eq(trades.id, tradeTags.tradeId))
+    .where(
+      and(
+        eq(tradeTags.userId, userId),
+        eq(trades.status, "closed"),
+        eq(trades.incomplete, false),
+      ),
+    )
+    .groupBy(tags.id, tags.name, tags.kind)
+    .orderBy(desc(sql`sum(${trades.netPnl})`));
+
+  return rows.map((r) => {
+    const n = Number(r.trades);
+    const wins = Number(r.wins);
+    const netPnl = Number(r.netPnl);
+    return {
+      id: r.id,
+      name: r.name,
+      kind: r.kind as TagKind,
+      trades: n,
+      wins,
+      winRate: n > 0 ? Math.round((wins / n) * 100) : 0,
+      netPnl,
+      expectancy: n > 0 ? netPnl / n : 0,
+    };
+  });
 }
 
 export interface TradeFill {
@@ -157,6 +300,7 @@ export interface JournalStats {
   totalTrades: number;
   closedTrades: number;
   openTrades: number;
+  incompleteTrades: number;
   netPnl: number;
   winners: number;
   losers: number;
@@ -169,16 +313,20 @@ export interface JournalStats {
 }
 
 export async function getJournalStats(userId: string): Promise<JournalStats> {
+  // Incomplete trades (missing cost basis) are excluded from every P/L figure —
+  // their proceeds-only "profit" would badly skew the totals.
+  const complete = sql`${trades.incomplete} = false`;
   const [row] = await db
     .select({
       totalTrades: sql<string>`count(*)`,
-      closedTrades: sql<string>`count(*) filter (where ${trades.status} = 'closed')`,
+      closedTrades: sql<string>`count(*) filter (where ${trades.status} = 'closed' and ${complete})`,
       openTrades: sql<string>`count(*) filter (where ${trades.status} = 'open')`,
-      netPnl: sql<string>`coalesce(sum(${trades.netPnl}), 0)`,
-      winners: sql<string>`count(*) filter (where ${trades.status} = 'closed' and ${trades.netPnl} > 0)`,
-      losers: sql<string>`count(*) filter (where ${trades.status} = 'closed' and ${trades.netPnl} < 0)`,
-      grossWin: sql<string>`coalesce(sum(${trades.netPnl}) filter (where ${trades.status} = 'closed' and ${trades.netPnl} > 0), 0)`,
-      grossLoss: sql<string>`coalesce(sum(${trades.netPnl}) filter (where ${trades.status} = 'closed' and ${trades.netPnl} < 0), 0)`,
+      incompleteTrades: sql<string>`count(*) filter (where ${trades.incomplete})`,
+      netPnl: sql<string>`coalesce(sum(${trades.netPnl}) filter (where ${complete}), 0)`,
+      winners: sql<string>`count(*) filter (where ${trades.status} = 'closed' and ${complete} and ${trades.netPnl} > 0)`,
+      losers: sql<string>`count(*) filter (where ${trades.status} = 'closed' and ${complete} and ${trades.netPnl} < 0)`,
+      grossWin: sql<string>`coalesce(sum(${trades.netPnl}) filter (where ${trades.status} = 'closed' and ${complete} and ${trades.netPnl} > 0), 0)`,
+      grossLoss: sql<string>`coalesce(sum(${trades.netPnl}) filter (where ${trades.status} = 'closed' and ${complete} and ${trades.netPnl} < 0), 0)`,
       optionTrades: sql<string>`count(*) filter (where ${trades.kind} = 'option')`,
       stockTrades: sql<string>`count(*) filter (where ${trades.kind} = 'stock')`,
     })
@@ -195,6 +343,7 @@ export async function getJournalStats(userId: string): Promise<JournalStats> {
     totalTrades: Number(row?.totalTrades ?? 0),
     closedTrades: closed,
     openTrades: Number(row?.openTrades ?? 0),
+    incompleteTrades: Number(row?.incompleteTrades ?? 0),
     netPnl: Number(row?.netPnl ?? 0),
     winners,
     losers,
@@ -207,36 +356,110 @@ export async function getJournalStats(userId: string): Promise<JournalStats> {
   };
 }
 
+export interface RealizedPoint {
+  /** exit timestamp, epoch ms */
+  t: number;
+  /** realized P/L booked by this trade */
+  pnl: number;
+}
+
 /**
- * Cumulative realized P/L over closed trades, downsampled for the sparkline.
- * The running total is computed in SQL so the numeric math stays exact.
+ * Every realized trade as a {time, pnl} point, oldest first. Deliberately
+ * compact — the client builds the cumulative equity curve and any date-range
+ * slice from this, so switching 24H/1W/1M/YTD/ALL needs no round-trip.
  */
-export async function getEquityCurve(
-  userId: string,
-  maxPoints = 40,
-): Promise<number[]> {
+export async function getRealizedSeries(userId: string): Promise<RealizedPoint[]> {
+  const rows = await db
+    .select({ exitAt: trades.exitAt, netPnl: trades.netPnl })
+    .from(trades)
+    .where(
+      and(
+        eq(trades.userId, userId),
+        eq(trades.status, "closed"),
+        eq(trades.incomplete, false),
+        sql`${trades.exitAt} is not null`,
+      ),
+    )
+    .orderBy(trades.exitAt);
+  return rows.map((r) => ({
+    t: new Date(r.exitAt as Date).getTime(),
+    pnl: Number(r.netPnl ?? "0"),
+  }));
+}
+
+export interface TradeHighlights {
+  biggestGain: JournalTrade | null;
+  biggestLoss: JournalTrade | null;
+  bestReturn: JournalTrade | null;
+  worstReturn: JournalTrade | null;
+}
+
+/**
+ * The four extreme trades for the header highlight cards. Realized (complete,
+ * closed) trades only — an open or incomplete trade has no final figure to
+ * rank. The return-ranked cards additionally require a real cost basis.
+ */
+export async function getTradeHighlights(userId: string): Promise<TradeHighlights> {
+  const closed = and(
+    eq(trades.userId, userId),
+    eq(trades.status, "closed"),
+    eq(trades.incomplete, false),
+  );
+  const withCost = and(closed, sql`${trades.cost} >= ${MIN_COST_BASIS}`);
+
+  const pick = async (
+    where: SQL | undefined,
+    order: SQL,
+  ): Promise<JournalTrade | null> => {
+    const [r] = await db.select().from(trades).where(where).orderBy(order).limit(1);
+    return r ? mapTrade(r) : null;
+  };
+
+  const [biggestGain, biggestLoss, bestReturn, worstReturn] = await Promise.all([
+    pick(closed, sql`${trades.netPnl} desc nulls last`),
+    pick(closed, sql`${trades.netPnl} asc nulls last`),
+    pick(withCost, sql`${trades.netPnl} / ${trades.cost} desc`),
+    pick(withCost, sql`${trades.netPnl} / ${trades.cost} asc`),
+  ]);
+
+  return { biggestGain, biggestLoss, bestReturn, worstReturn };
+}
+
+export interface DailyPnl {
+  /** YYYY-MM-DD in market time (ET). */
+  day: string;
+  trades: number;
+  pnl: number;
+}
+
+/**
+ * Per-day realized P/L for the calendar, keyed by the ET date a trade closed.
+ * Complete closed trades only — open and incomplete trades have no reliable
+ * realized figure to place on a day.
+ */
+export async function getDailyPnl(userId: string): Promise<DailyPnl[]> {
   const rows = await db
     .select({
-      cum: sql<string>`sum(${trades.netPnl}) over (order by ${trades.exitAt}, ${trades.id})`,
+      day: sql<string>`to_char(${trades.exitAt} at time zone 'America/New_York', 'YYYY-MM-DD')`,
+      trades: sql<string>`count(*)`,
+      pnl: sql<string>`coalesce(sum(${trades.netPnl}), 0)`,
     })
     .from(trades)
     .where(
       and(
         eq(trades.userId, userId),
         eq(trades.status, "closed"),
+        eq(trades.incomplete, false),
         sql`${trades.exitAt} is not null`,
       ),
     )
-    .orderBy(trades.exitAt, trades.id);
+    .groupBy(sql`1`);
 
-  if (rows.length === 0) return [];
-  const values = rows.map((r) => Number(r.cum));
-  if (values.length <= maxPoints) return [0, ...values];
-
-  const step = (values.length - 1) / (maxPoints - 1);
-  const out: number[] = [];
-  for (let i = 0; i < maxPoints; i++) out.push(values[Math.round(i * step)]);
-  return [0, ...out];
+  return rows.map((r) => ({
+    day: r.day,
+    trades: Number(r.trades),
+    pnl: Number(r.pnl),
+  }));
 }
 
 export async function hasAnyTrades(userId: string): Promise<boolean> {

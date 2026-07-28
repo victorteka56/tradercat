@@ -1,47 +1,31 @@
 import Link from "next/link";
-import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyJournal } from "@/components/journal/EmptyJournal";
-import { JournalTradeRow } from "@/components/journal/JournalTradeRow";
+import { JournalTable } from "@/components/journal/JournalTable";
+import { JournalCalendar } from "@/components/journal/JournalCalendar";
+import { JournalViewToggle } from "@/components/journal/JournalViewToggle";
+import { HighlightCards } from "@/components/journal/HighlightCards";
 import { requireUser } from "@/lib/auth";
-import { getJournalStats, getTrades } from "@/lib/queries/journal";
+import {
+  getDailyPnl,
+  getJournalStats,
+  getTradeHighlights,
+  getTrades,
+} from "@/lib/queries/journal";
+import { getJournalView } from "./view-actions";
 import { usd } from "@/lib/format";
-import { tradeLabel } from "@/lib/trade-display";
 
-type Filter = "all" | "wins" | "losses" | "options" | "stocks" | "open";
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "wins", label: "Wins" },
-  { key: "losses", label: "Losses" },
-  { key: "options", label: "Options" },
-  { key: "stocks", label: "Stocks" },
-  { key: "open", label: "Open" },
-];
-
-export default async function JournalPage({
-  searchParams,
-}: {
-  searchParams: { filter?: string; q?: string };
-}) {
+export default async function JournalPage() {
   const user = await requireUser();
-  const [stats, all] = await Promise.all([
+  const [stats, all, view, daily, highlights] = await Promise.all([
     getJournalStats(user.id),
     getTrades(user.id),
+    getJournalView(user.id),
+    getDailyPnl(user.id),
+    getTradeHighlights(user.id),
   ]);
 
   if (stats.totalTrades === 0) return <EmptyJournal />;
-
-  const filter = (searchParams.filter ?? "all") as Filter;
-  const q = (searchParams.q ?? "").trim().toUpperCase();
-
-  let list = all;
-  if (filter === "wins") list = list.filter((t) => t.netPnl > 0);
-  else if (filter === "losses") list = list.filter((t) => t.netPnl < 0);
-  else if (filter === "options") list = list.filter((t) => t.kind === "option");
-  else if (filter === "stocks") list = list.filter((t) => t.kind === "stock");
-  else if (filter === "open") list = list.filter((t) => t.status === "open");
-  if (q) list = list.filter((t) => tradeLabel(t).toUpperCase().includes(q));
 
   return (
     <main className="px-4 pt-14 lg:pt-10">
@@ -57,12 +41,15 @@ export default async function JournalPage({
             </span>
           </p>
         </div>
-        <Link
-          href="/import"
-          className="inline-flex h-11 items-center justify-center rounded-full border border-line bg-surface px-5 text-[14px] font-semibold text-ink transition-colors hover:bg-surface-2"
-        >
-          Import
-        </Link>
+        <div className="flex items-center gap-2">
+          <JournalViewToggle current={view} />
+          <Link
+            href="/import"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-line bg-surface px-5 text-[14px] font-semibold text-ink transition-colors hover:bg-surface-2"
+          >
+            Import
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -89,40 +76,15 @@ export default async function JournalPage({
         />
       </div>
 
-      {/* Filters are links so the list stays a server component. */}
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <Link
-              key={f.key}
-              href={f.key === "all" ? "/journal" : `/journal?filter=${f.key}`}
-              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${
-                active
-                  ? "border-ink bg-ink text-white"
-                  : "border-line bg-surface text-ink-soft hover:bg-surface-2"
-              }`}
-            >
-              {f.label}
-            </Link>
-          );
-        })}
+      <div className="mb-4">
+        <HighlightCards highlights={highlights} />
       </div>
 
-      <SurfaceCard className="divide-y divide-line overflow-hidden">
-        {list.length === 0 ? (
-          <div className="px-4 py-10 text-center text-[13px] text-ink-soft">
-            No trades match this filter.
-          </div>
-        ) : (
-          list.map((t) => <JournalTradeRow key={t.id} trade={t} />)
-        )}
-      </SurfaceCard>
-
-      <p className="mt-4 text-center text-[11px] text-ink-faint">
-        Showing {list.length.toLocaleString()} of{" "}
-        {stats.totalTrades.toLocaleString()} trades
-      </p>
+      {view === "calendar" ? (
+        <JournalCalendar days={daily} />
+      ) : (
+        <JournalTable trades={all} />
+      )}
     </main>
   );
 }

@@ -8,7 +8,7 @@ import "server-only";
  * both sit on this.
  */
 
-export type Interval = "1min" | "5min" | "15min" | "1hour" | "1day";
+export type Interval = "1min" | "5min" | "15min" | "30min" | "1hour" | "1day";
 
 export interface Candle {
   ts: Date;
@@ -43,6 +43,7 @@ const MASSIVE_TIMESPAN: Record<Interval, { multiplier: number; timespan: string 
   "1min": { multiplier: 1, timespan: "minute" },
   "5min": { multiplier: 5, timespan: "minute" },
   "15min": { multiplier: 15, timespan: "minute" },
+  "30min": { multiplier: 30, timespan: "minute" },
   "1hour": { multiplier: 1, timespan: "hour" },
   "1day": { multiplier: 1, timespan: "day" },
 };
@@ -113,6 +114,7 @@ const ALPACA_TIMEFRAME: Record<Interval, string> = {
   "1min": "1Min",
   "5min": "5Min",
   "15min": "15Min",
+  "30min": "30Min",
   "1hour": "1Hour",
   "1day": "1Day",
 };

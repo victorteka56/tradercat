@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, notInArray, sql } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   fills,
@@ -195,7 +195,7 @@ export async function runReconstruction(
       ]),
     );
 
-    const drafts = reconstructTrades(input);
+    const drafts = reconstructTrades(input, new Date());
     let upserted = 0;
 
     for (const part of chunk(drafts, 200)) {
@@ -225,6 +225,7 @@ export async function runReconstruction(
             cost: n(d.cost)!,
             proceeds: n(d.proceeds)!,
             netPnl: n(d.netPnl),
+            incomplete: d.incomplete,
             entryAt: d.entryAt,
             exitAt: d.exitAt,
             holdingSeconds: d.holdingSeconds,
@@ -252,6 +253,7 @@ export async function runReconstruction(
             cost: sql`excluded.cost`,
             proceeds: sql`excluded.proceeds`,
             netPnl: sql`excluded.net_pnl`,
+            incomplete: sql`excluded.incomplete`,
             entryAt: sql`excluded.entry_at`,
             exitAt: sql`excluded.exit_at`,
             holdingSeconds: sql`excluded.holding_seconds`,
@@ -385,9 +387,18 @@ export async function ingestBrokerageFills(
   return { inserted, duplicates: mapped.length - inserted };
 }
 
-/** Removes every imported fill and trade for a user. */
+/**
+ * Removes CSV-imported fills and trades only. Brokerage-synced data (source
+ * 'snaptrade') is left untouched — clearing a file upload must never wipe a
+ * user's live brokerage history. Trade legs and cached reviews cascade.
+ */
 export async function clearImportedData(userId: string) {
-  await db.delete(trades).where(eq(trades.userId, userId));
-  await db.delete(fills).where(eq(fills.userId, userId));
+  const csvSources = ["robinhood_csv", "other_csv"] as const;
+  await db
+    .delete(trades)
+    .where(and(eq(trades.userId, userId), inArray(trades.source, csvSources)));
+  await db
+    .delete(fills)
+    .where(and(eq(fills.userId, userId), inArray(fills.source, csvSources)));
   await db.delete(importBatches).where(eq(importBatches.userId, userId));
 }

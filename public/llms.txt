@@ -1,0 +1,23 @@
+# TraderCat
+
+> TraderCat is a trading journal and AI trade-review web app. It rebuilds your trades from your broker's raw fills, charts each one against the underlying's price, and reviews it in plain English — then turns your history into analytics that reveal your real edge and behavioural leaks.
+
+## What it does
+
+- **Trade reconstruction**: imports a broker CSV (e.g. Robinhood, Webull) or syncs your brokerage, then groups thousands of individual fills back into the trades you actually made.
+- **Per-trade charts**: plots each trade on the underlying's price with entry/exit markers and a running P/L showing the drawdown you sat through (exact for stocks; an estimate for options).
+- **AI trade review**: computes the numbers first (entry, exit, favourable/adverse excursion, drawdown, giveback), then narrates them in plain English. It never invents figures.
+- **Analytics**: equity curve, win rate, profit factor, payoff ratio, max drawdown, and breakdowns by instrument, direction, day of week, hold length and symbol — plus behavioural findings (holding losers longer than winners, tilt after a loss, profit concentration).
+
+## Key facts
+
+- Category: trading journal / trade analytics (finance software).
+- Platform: web application.
+- Privacy: data is scoped per user, brokerage secrets are encrypted at rest, and user journals are not indexed by search engines.
+- Pricing: free to start.
+
+## Pages
+
+- Home / overview: /
+- Create an account: /signup
+- Sign in: /login
