@@ -38,8 +38,7 @@ export default async function PortfolioPage() {
         <SurfaceCard className="p-8 text-center lg:mx-auto lg:max-w-xl">
           <h2 className="text-[17px] font-semibold text-ink">Connect a brokerage</h2>
           <p className="mx-auto mt-1.5 max-w-[320px] text-[13.5px] leading-relaxed text-ink-soft">
-            Live holdings, balances and allocation come straight from your broker.
-            Read-only — TraderCat never sees your credentials.
+            Read-only. We never see your credentials.
           </p>
           <Link
             href="/import"
@@ -207,7 +206,7 @@ export default async function PortfolioPage() {
         <SurfaceCard className="p-5">
           <div className="text-[13px] font-semibold text-ink">Allocation</div>
           <p className="text-[11.5px] leading-relaxed text-ink-soft">
-            Each position&apos;s share of total value, shaded by asset class.
+            Share of total value.
           </p>
           <AllocationDonut ring={ring} legend={legend} height={330} />
         </SurfaceCard>
@@ -231,7 +230,7 @@ export default async function PortfolioPage() {
               Open P/L by position
             </div>
             <p className="mb-2 text-[11.5px] leading-relaxed text-ink-soft">
-              Unrealized gain or loss against cost basis.
+              Against cost basis.
             </p>
             <UnrealizedChart holdings={chartHoldings} />
           </SurfaceCard>

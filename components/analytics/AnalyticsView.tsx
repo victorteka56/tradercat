@@ -154,7 +154,7 @@ export function AnalyticsView({
             <div className="mb-3 break-inside-avoid">
               <DivergingBar
                 title="Long vs short"
-                question="Bullish bets (longs & calls) vs bearish (shorts & puts)."
+                question="Bullish vs bearish."
                 left={long}
                 right={short}
                 href="/analytics/direction"
@@ -197,7 +197,7 @@ export function AnalyticsView({
             <div className="mb-3 break-inside-avoid">
               <TreemapChart
                 title="Symbols"
-                question="Where you make and lose the most — tile size is P/L."
+                question="Where you make and lose the most."
                 buckets={a.symbols}
                 href="/analytics/symbols"
               />
@@ -246,7 +246,7 @@ function OvertradingCard({ buckets }: { buckets: OvertradingBucket[] }) {
     <SurfaceCard className="p-4">
       <h3 className="text-[14px] font-semibold text-ink">Overtrading check</h3>
       <p className="mb-3 text-[11.5px] leading-relaxed text-ink-soft">
-        Average result per day, by how many trades you took.
+        Average result per day.
         {worseWhenBusy ? " Your busier days end worse." : ""}
       </p>
       <div className="space-y-2">
@@ -302,7 +302,7 @@ function RCard({ r }: { r: NonNullable<ReturnType<typeof computeAnalytics>>["rSt
         <span className="text-[11px] text-ink-faint">{r.scored} scored</span>
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-ink-soft">
-        Average result per unit of risk — your edge, net of position size.
+        Average result per unit risked.
       </p>
       <div className="flex items-end gap-4">
         <div>

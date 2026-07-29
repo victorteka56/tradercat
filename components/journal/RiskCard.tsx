@@ -139,8 +139,7 @@ export function RiskCard({
         // Editing — enter a stop, preview R live.
         <>
           <p className="mb-2.5 text-[12px] leading-relaxed text-ink-soft">
-            Where would you have bailed? Enter the {kind === "option" ? "option's" : "stock's"}{" "}
-            stop price — we&apos;ll score the trade in R.
+            Where would you have bailed?
           </p>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">

@@ -112,9 +112,8 @@ export function PositionsNews({
         </ul>
       )}
 
-      <p className="mt-2.5 border-t border-line pt-2 text-[10px] leading-relaxed text-ink-faint">
-        Headlines &amp; sentiment via Polygon — cached per ticker and shared across
-        the app, so it stays fast as your positions grow.
+      <p className="mt-2.5 border-t border-line pt-2 text-[10px] text-ink-faint">
+        via Polygon
       </p>
     </SurfaceCard>
   );

@@ -88,9 +88,6 @@ export function TradeTagsCard({
         <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">
           Tags
         </span>
-        <span className="text-[11px] text-ink-faint">
-          Label the setup, mistake &amp; emotion
-        </span>
       </div>
 
       {/* Applied tags — removable chips, coloured by category. */}
@@ -115,8 +112,7 @@ export function TradeTagsCard({
         </div>
       ) : (
         <p className="mb-3 text-[12.5px] leading-relaxed text-ink-soft">
-          No tags yet. Tag a few trades and Analytics will show which setups make
-          money and which mistakes cost you.
+          Tag your trades to see which setups pay.
         </p>
       )}
 
