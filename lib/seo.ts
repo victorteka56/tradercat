@@ -11,10 +11,10 @@ export const SITE_URL = (
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "TraderCat";
-export const SITE_TAGLINE = "Trading journal & AI trade review";
+export const SITE_TAGLINE = "The trading journal that explains every trade";
 
 export const SITE_DESCRIPTION =
-  "TraderCat rebuilds your trades from your broker's data, charts each one against the market, and reviews it in plain English — so you can see what worked, why, and what to fix next.";
+  "TraderCat is the trading journal that explains every trade. It rebuilds your history from your broker's data, charts each trade, and reviews it in plain English — so you can see what's working and what's quietly costing you.";
 
 export const FAQ: { q: string; a: string }[] = [
   {
@@ -83,8 +83,9 @@ export function jsonLd() {
         ],
         offers: {
           "@type": "Offer",
-          price: "0",
+          price: "19.99",
           priceCurrency: "USD",
+          description: "14-day free trial, then $19.99/month. Cancel anytime.",
         },
       },
       {
