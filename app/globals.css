@@ -185,3 +185,93 @@ body {
     animation: none;
   }
 }
+
+/* Smooth anchor scrolling (landing nav → #faq). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* The hero equity curve draws itself once. Requires pathLength="1" on the
+   path so the dash math is unit-normalised. */
+@keyframes tc-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.tc-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tc-draw 1.8s cubic-bezier(0.55, 0, 0.15, 1) 0.4s forwards;
+}
+
+/* Everything that appears once the line has been drawn. */
+@keyframes tc-appear {
+  to {
+    opacity: 1;
+  }
+}
+.tc-after-draw {
+  opacity: 0;
+  animation: tc-appear 0.8s ease 1.7s forwards;
+}
+
+/* The live end-of-curve dot breathes. transform/opacity only. */
+@keyframes tc-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.9);
+    opacity: 0.35;
+  }
+}
+.tc-dot-pulse {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: tc-dot-pulse 2.6s ease-in-out 2.6s infinite;
+}
+
+/* Dot-grid drift. The WRAPPER owns the mask (so the fade stays put) and
+   overflow; the oversized inner layer translates exactly one tile per loop,
+   which makes the motion seamless. Transform-only — compositor cheap. */
+.tc-grid-mask {
+  overflow: hidden;
+  mask-image: radial-gradient(ellipse 62% 55% at 50% 32%, black, transparent 74%);
+  -webkit-mask-image: radial-gradient(ellipse 62% 55% at 50% 32%, black, transparent 74%);
+}
+@keyframes tc-grid-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-28px, -28px, 0);
+  }
+}
+.tc-grid {
+  position: absolute;
+  inset: -32px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1.4px);
+  background-size: 28px 28px;
+  opacity: 0.055;
+  animation: tc-grid-drift 22s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .tc-after-draw {
+    animation: none;
+    opacity: 1;
+  }
+  .tc-dot-pulse,
+  .tc-grid {
+    animation: none;
+  }
+}

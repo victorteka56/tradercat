@@ -39,7 +39,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How much does TraderCat cost?",
-    a: "TraderCat is free to start — import your trades and explore your journal and analytics at no cost.",
+    a: "Every account starts with a 14-day free trial of everything — no card required. After that, TraderCat Pro is $19.99/month. Cancel anytime; your data stays exportable either way.",
   },
 ];
 

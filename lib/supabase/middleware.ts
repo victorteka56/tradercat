@@ -7,6 +7,7 @@ const PUBLIC_ROUTES = ["/login", "/signup", "/auth"];
 /** Public SEO / metadata routes crawlers must reach without auth. */
 const PUBLIC_EXACT = new Set([
   "/",
+  "/pricing",
   "/privacy",
   "/terms",
   "/robots.txt",
