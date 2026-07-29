@@ -38,18 +38,31 @@ export default function LandingPage() {
         {/* Aurora — one green bloom, one faint violet. Blurred far past
             recognisability so they read as light, not shapes. */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
+          {/* Drifting dot grid — texture, not spectacle. Wrapper owns the mask
+              so the fade stays put while the grid slides beneath it. */}
+          <div className="tc-grid-mask absolute inset-x-0 top-0 h-[760px]">
+            <div className="tc-grid" />
+          </div>
           <div
             className="tc-aurora absolute left-1/2 top-[-260px] h-[560px] w-[820px] -translate-x-1/2 rounded-full"
             style={{
               background:
-                "radial-gradient(closest-side, rgba(43,214,143,0.14), rgba(43,214,143,0.05) 45%, transparent 72%)",
+                "radial-gradient(closest-side, rgba(43,214,143,0.19), rgba(43,214,143,0.07) 45%, transparent 72%)",
             }}
           />
           <div
             className="tc-aurora tc-aurora-slow absolute right-[-180px] top-[220px] h-[420px] w-[520px] rounded-full"
             style={{
               background:
-                "radial-gradient(closest-side, rgba(139,92,246,0.09), rgba(139,92,246,0.03) 45%, transparent 72%)",
+                "radial-gradient(closest-side, rgba(139,92,246,0.13), rgba(139,92,246,0.04) 45%, transparent 72%)",
+            }}
+          />
+          <div
+            className="tc-aurora tc-aurora-slow absolute left-[-140px] top-[560px] h-[360px] w-[440px] rounded-full"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(43,214,143,0.08), transparent 70%)",
+              animationDelay: "-7s",
             }}
           />
           {/* Hairline horizon under the hero */}
@@ -74,8 +87,22 @@ export default function LandingPage() {
           </div>
           <nav className="flex items-center gap-1.5">
             <Link
+              href="/pricing"
+              className="hidden rounded-full px-3.5 py-2 text-[13.5px] font-medium transition-colors hover:text-white sm:inline-flex"
+              style={{ color: SOFT }}
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/#faq"
+              className="hidden rounded-full px-3.5 py-2 text-[13.5px] font-medium transition-colors hover:text-white sm:inline-flex"
+              style={{ color: SOFT }}
+            >
+              FAQ
+            </Link>
+            <Link
               href="/login"
-              className="rounded-full px-4 py-2 text-[13.5px] font-medium transition-colors"
+              className="rounded-full px-4 py-2 text-[13.5px] font-medium transition-colors hover:text-white"
               style={{ color: SOFT }}
             >
               Sign in
@@ -129,8 +156,8 @@ export default function LandingPage() {
               className="mx-auto mt-6 max-w-[440px] text-[15.5px] leading-relaxed lg:text-[16.5px]"
               style={{ color: SOFT }}
             >
-              Connect your broker. TraderCat rebuilds every trade, charts it, and
-              tells you what&apos;s working — in plain English.
+              Connect your broker and see what&apos;s making you money, what&apos;s
+              quietly costing you — and the habits behind both.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -174,6 +201,8 @@ export default function LandingPage() {
                   </filter>
                 </defs>
                 <path
+                  className="tc-draw"
+                  pathLength={1}
                   d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30"
                   fill="none"
                   stroke={GREEN}
@@ -182,14 +211,17 @@ export default function LandingPage() {
                   filter="url(#glow)"
                 />
                 <path
+                  className="tc-after-draw"
                   d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30 L632 190 L8 190 Z"
                   fill="url(#fade)"
                 />
-                <circle cx="262" cy="142" r="4" fill={INK} stroke={GREEN} strokeWidth="2" />
-                <circle cx="632" cy="30" r="4" fill={GREEN} />
-                <text x="252" y="168" fontSize="11" fill={FAINT} fontFamily="inherit">
-                  the drawdown you sat through
-                </text>
+                <g className="tc-after-draw">
+                  <circle cx="262" cy="142" r="4" fill={INK} stroke={GREEN} strokeWidth="2" />
+                  <circle className="tc-dot-pulse" cx="632" cy="30" r="4" fill={GREEN} />
+                  <text x="252" y="168" fontSize="11" fill={FAINT} fontFamily="inherit">
+                    the drawdown you sat through
+                  </text>
+                </g>
               </svg>
 
               {/* One line of the product's voice — violet only whispers here. */}
@@ -240,7 +272,11 @@ export default function LandingPage() {
           </section>
 
           {/* ------------------------------- FAQ ------------------------------- */}
-          <section className="mx-auto max-w-[640px] pb-20" aria-labelledby="faq-heading">
+          <section
+            id="faq"
+            className="mx-auto max-w-[640px] scroll-mt-24 pb-20"
+            aria-labelledby="faq-heading"
+          >
             <h2
               id="faq-heading"
               className="font-display text-center text-[24px] font-medium tracking-tight"
