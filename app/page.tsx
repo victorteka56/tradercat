@@ -109,9 +109,125 @@ export default function LandingPage() {
           </nav>
         </header>
 
-        <main className="relative mx-auto max-w-[1060px] px-6">
-          {/* ------------------------------ hero ------------------------------ */}
-          <section className="relative pb-40 pt-20 text-center lg:pb-56 lg:pt-28">
+        {/* ------------------------------ hero ------------------------------ */}
+        {/* Full-bleed on purpose: the chart scenes live OUTSIDE the content
+            column so nothing clips at the edges. Layers, bottom-up: chart
+            carousel → dark scrim → text. */}
+        <section className="relative overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            {/* Scene 1 — equity curve (green), slow pan */}
+            <div className="tc-scene tc-scene-1">
+              <svg
+                viewBox="0 0 1440 320"
+                preserveAspectRatio="none"
+                className="tc-pan h-full w-full"
+                style={{ opacity: 0.55 }}
+              >
+                <defs>
+                  <linearGradient id="eqFade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.2" />
+                    <stop offset="100%" stopColor={GREEN} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M-60 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1500 40 L1500 320 L-60 320 Z"
+                  fill="url(#eqFade)"
+                />
+                <path
+                  d="M-60 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1500 40"
+                  fill="none"
+                  stroke={GREEN}
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            </div>
+
+            {/* Scene 2 — allocation donut (app palette), very slow spin */}
+            <div className="tc-scene tc-scene-2 flex items-center justify-center">
+              <svg viewBox="0 0 420 420" className="h-[130%] w-auto" style={{ opacity: 0.4 }}>
+                <g className="tc-spin">
+                  <g transform="rotate(-90 210 210)">
+                    <circle cx="210" cy="210" r="110" fill="none" stroke="#5B7FD4" strokeWidth="50" strokeDasharray="242 691" strokeDashoffset="0" />
+                    <circle cx="210" cy="210" r="110" fill="none" stroke="#2BC5A8" strokeWidth="50" strokeDasharray="173 691" strokeDashoffset="-242" />
+                    <circle cx="210" cy="210" r="110" fill="none" stroke="#D9A441" strokeWidth="50" strokeDasharray="152 691" strokeDashoffset="-415" />
+                    <circle cx="210" cy="210" r="110" fill="none" stroke="#8B7BD8" strokeWidth="50" strokeDasharray="124 691" strokeDashoffset="-567" />
+                  </g>
+                </g>
+              </svg>
+            </div>
+
+            {/* Scene 3 — monthly columns (violet), bars breathing in stagger */}
+            <div className="tc-scene tc-scene-3">
+              <svg
+                viewBox="0 0 1440 320"
+                preserveAspectRatio="none"
+                className="h-full w-full"
+                style={{ opacity: 0.42 }}
+              >
+                {[120, 180, 90, 220, 160, 240, 130, 200, 170, 110, 230, 150, 190, 210].map(
+                  (h, i) => (
+                    <rect
+                      key={i}
+                      className="tc-bar"
+                      x={i * 103 + 22}
+                      y={320 - h}
+                      width="52"
+                      height={h}
+                      rx="7"
+                      fill="#8B7BD8"
+                      style={{ animationDelay: `${i * 0.35}s` }}
+                    />
+                  ),
+                )}
+              </svg>
+            </div>
+
+            {/* Scene 4 — running P/L (amber) dipping under a zero line, pan */}
+            <div className="tc-scene tc-scene-4">
+              <svg
+                viewBox="0 0 1440 320"
+                preserveAspectRatio="none"
+                className="tc-pan h-full w-full"
+                style={{ opacity: 0.5, animationDirection: "alternate-reverse" }}
+              >
+                <line
+                  x1="-60"
+                  y1="170"
+                  x2="1500"
+                  y2="170"
+                  stroke="rgba(255,255,255,0.16)"
+                  strokeWidth="1"
+                  strokeDasharray="6 9"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <path
+                  d="M300 170 C360 196, 470 220, 640 244 C740 240, 830 196, 880 170 Z"
+                  fill="rgba(224,104,95,0.22)"
+                />
+                <path
+                  d="M-60 150 C150 120, 260 200, 380 210 C470 218, 520 250, 640 244 C760 238, 800 170, 900 150 C1000 130, 1100 150, 1200 120 C1300 96, 1380 88, 1500 70"
+                  fill="none"
+                  stroke="#D9A441"
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            </div>
+
+            {/* The dark veil that keeps the words legible over any scene —
+                deepest where the text sits, thinner at the edges so the
+                charts still breathe. */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse 64% 60% at 50% 42%, rgba(10,13,18,0.82), rgba(10,13,18,0.45))",
+              }}
+            />
+          </div>
+
+          <div className="relative mx-auto max-w-[1060px] px-6 py-24 text-center lg:py-36">
             <h1 className="font-display mx-auto max-w-[800px] text-[38px] font-semibold leading-[1.06] tracking-[-0.02em] lg:text-[56px]">
               Every trade,
               <br className="lg:hidden" />{" "}
@@ -153,55 +269,10 @@ export default function LandingPage() {
             <p className="mt-4 text-[12px]" style={{ color: FAINT }}>
               14-day free trial · no card required
             </p>
+          </div>
+        </section>
 
-            {/* Ambient chart — the app's equity curve as a transparent layer,
-                not a boxed widget. Full-bleed, drawn in once, breathing dot.
-                No border, no chip, no label: background, not exhibit. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-[-24px] bottom-0 h-[220px] lg:h-[320px]"
-            >
-              <svg
-                viewBox="0 0 1440 320"
-                preserveAspectRatio="none"
-                className="h-full w-full"
-              >
-                <defs>
-                  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.14" />
-                    <stop offset="100%" stopColor={GREEN} stopOpacity="0" />
-                  </linearGradient>
-                  <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
-                    <feGaussianBlur stdDeviation="6" result="b" />
-                    <feMerge>
-                      <feMergeNode in="b" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                <path
-                  className="tc-draw"
-                  pathLength={1}
-                  d="M0 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1440 40"
-                  fill="none"
-                  stroke={GREEN}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  filter="url(#glow)"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <path
-                  className="tc-after-draw"
-                  d="M0 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1440 40 L1440 320 L0 320 Z"
-                  fill="url(#fade)"
-                />
-                <g className="tc-after-draw">
-                  <circle cx="580" cy="236" r="3.5" fill={INK} stroke={GREEN} strokeWidth="2" />
-                </g>
-              </svg>
-            </div>
-          </section>
-
+        <main className="relative mx-auto max-w-[1060px] px-6">
           {/* ----------------------------- features ---------------------------- */}
           <section className="mx-auto max-w-[880px] py-16 lg:py-20">
             <ul

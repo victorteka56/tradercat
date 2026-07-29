@@ -275,3 +275,69 @@ body {
     animation: none;
   }
 }
+
+/* ------------------------ hero chart carousel ------------------------ */
+
+/* Four chart scenes crossfade on a 24s loop — each owns a 6s slot with a
+   gentle 1.5s fade at both ends. Opacity only; the scrim above keeps text
+   readable regardless of which scene is up. */
+.tc-scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: tc-scene 24s linear infinite both;
+}
+@keyframes tc-scene {
+  0% { opacity: 0; }
+  6% { opacity: 1; }
+  25% { opacity: 1; }
+  31% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.tc-scene-2 { animation-delay: 6s; }
+.tc-scene-3 { animation-delay: 12s; }
+.tc-scene-4 { animation-delay: 18s; }
+
+/* Per-scene motion — all transform-only. */
+@keyframes tc-pan {
+  from { transform: translateX(0); }
+  to { transform: translateX(-48px); }
+}
+.tc-pan {
+  animation: tc-pan 14s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes tc-spin {
+  to { transform: rotate(360deg); }
+}
+.tc-spin {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: tc-spin 90s linear infinite;
+}
+
+@keyframes tc-bar-breathe {
+  0%, 100% { transform: scaleY(0.82); }
+  50% { transform: scaleY(1); }
+}
+.tc-bar {
+  transform-origin: bottom;
+  transform-box: fill-box;
+  animation: tc-bar-breathe 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-scene {
+    animation: none;
+    opacity: 0;
+  }
+  .tc-scene-1 {
+    opacity: 1;
+  }
+  .tc-pan,
+  .tc-spin,
+  .tc-bar {
+    animation: none;
+  }
+}
