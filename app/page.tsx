@@ -65,14 +65,6 @@ export default function LandingPage() {
               animationDelay: "-7s",
             }}
           />
-          {/* Hairline horizon under the hero */}
-          <div
-            className="absolute left-1/2 top-[640px] h-px w-[min(1000px,90vw)] -translate-x-1/2"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
-            }}
-          />
         </div>
 
         <header className="relative mx-auto flex max-w-[1060px] items-center justify-between px-6 py-6">
@@ -119,27 +111,10 @@ export default function LandingPage() {
 
         <main className="relative mx-auto max-w-[1060px] px-6">
           {/* ------------------------------ hero ------------------------------ */}
-          <section className="pt-14 text-center lg:pt-24">
-            <p
-              className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-medium tracking-wide"
-              style={{
-                color: SOFT,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: GREEN, boxShadow: `0 0 8px ${GREEN}` }}
-              />
-              Now in open beta
-            </p>
-
-            <h1
-              className="font-display mx-auto max-w-[680px] text-[44px] font-semibold leading-[1.04] tracking-[-0.02em] lg:text-[72px]"
-            >
+          <section className="relative pb-40 pt-20 text-center lg:pb-56 lg:pt-28">
+            <h1 className="font-display mx-auto max-w-[800px] text-[38px] font-semibold leading-[1.06] tracking-[-0.02em] lg:text-[56px]">
               Every trade,
-              <br />
+              <br className="lg:hidden" />{" "}
               <span
                 style={{
                   background: `linear-gradient(100deg, ${GREEN}, #7EE8C0 55%, ${GREEN})`,
@@ -153,14 +128,13 @@ export default function LandingPage() {
             </h1>
 
             <p
-              className="mx-auto mt-6 max-w-[440px] text-[15.5px] leading-relaxed lg:text-[16.5px]"
+              className="mx-auto mt-5 max-w-[420px] text-[15px] leading-relaxed lg:text-[16px]"
               style={{ color: SOFT }}
             >
-              Connect your broker and see what&apos;s making you money, what&apos;s
-              quietly costing you — and the habits behind both.
+              See what&apos;s working. Fix what&apos;s quietly costing you.
             </p>
 
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/signup"
                 className="tc-neon-cta inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold"
@@ -179,17 +153,22 @@ export default function LandingPage() {
             <p className="mt-4 text-[12px]" style={{ color: FAINT }}>
               14-day free trial · no card required
             </p>
-          </section>
 
-          {/* --------------------------- product hint -------------------------- */}
-          <section className="mx-auto mt-16 max-w-[760px] lg:mt-20" aria-hidden>
-            <div className="tc-glass rounded-3xl p-5 lg:p-7">
-              {/* Equity curve — a real shape (drawdown sat through, then the
-                  recovery) drawn once, glowing once. */}
-              <svg viewBox="0 0 640 190" className="w-full" role="img" aria-label="">
+            {/* Ambient chart — the app's equity curve as a transparent layer,
+                not a boxed widget. Full-bleed, drawn in once, breathing dot.
+                No border, no chip, no label: background, not exhibit. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-[-24px] bottom-0 h-[220px] lg:h-[320px]"
+            >
+              <svg
+                viewBox="0 0 1440 320"
+                preserveAspectRatio="none"
+                className="h-full w-full"
+              >
                 <defs>
                   <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.18" />
+                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.14" />
                     <stop offset="100%" stopColor={GREEN} stopOpacity="0" />
                   </linearGradient>
                   <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
@@ -203,67 +182,51 @@ export default function LandingPage() {
                 <path
                   className="tc-draw"
                   pathLength={1}
-                  d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30"
+                  d="M0 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1440 40"
                   fill="none"
                   stroke={GREEN}
-                  strokeWidth="2.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   filter="url(#glow)"
+                  vectorEffect="non-scaling-stroke"
                 />
                 <path
                   className="tc-after-draw"
-                  d="M8 96 C60 88, 96 110, 140 120 C190 132, 216 150, 262 142 C300 136, 318 108, 356 96 C398 82, 420 96, 458 78 C500 57, 530 44, 632 30 L632 190 L8 190 Z"
+                  d="M0 150 C120 138, 200 176, 300 196 C400 216, 470 250, 580 236 C670 224, 710 178, 800 156 C890 134, 950 156, 1040 128 C1140 96, 1230 72, 1440 40 L1440 320 L0 320 Z"
                   fill="url(#fade)"
                 />
                 <g className="tc-after-draw">
-                  <circle cx="262" cy="142" r="4" fill={INK} stroke={GREEN} strokeWidth="2" />
-                  <circle className="tc-dot-pulse" cx="632" cy="30" r="4" fill={GREEN} />
-                  <text x="252" y="168" fontSize="11" fill={FAINT} fontFamily="inherit">
-                    the drawdown you sat through
-                  </text>
+                  <circle cx="580" cy="236" r="3.5" fill={INK} stroke={GREEN} strokeWidth="2" />
                 </g>
               </svg>
-
-              {/* One line of the product's voice — violet only whispers here. */}
-              <div
-                className="mt-4 flex items-start gap-3 rounded-2xl px-4 py-3.5"
-                style={{
-                  background: "rgba(139,92,246,0.07)",
-                  border: "1px solid rgba(139,92,246,0.18)",
-                }}
-              >
-                <span
-                  className="mt-1 h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: "#8B5CF6", boxShadow: "0 0 10px rgba(139,92,246,0.8)" }}
-                />
-                <p className="text-[13.5px] leading-relaxed" style={{ color: TEXT }}>
-                  You sat through a $1,240 drawdown before this paid — the win was
-                  real, but the risk that bought it was bigger than it looks.
-                </p>
-              </div>
             </div>
           </section>
 
           {/* ----------------------------- features ---------------------------- */}
-          <section className="mx-auto max-w-[880px] py-20 lg:py-24">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-4">
-              {FEATURES.map((f, i) => (
-                <div key={f.title}>
-                  <div
-                    className="text-[11px] font-semibold tracking-[0.14em]"
-                    style={{ color: GREEN }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </div>
-                  <h3 className="font-display mt-2 text-[19px] font-medium">{f.title}</h3>
-                  <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: SOFT }}>
-                    {f.body}
-                  </p>
-                </div>
+          <section className="mx-auto max-w-[880px] py-16 lg:py-20">
+            <ul
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-3 text-[13.5px]"
+              style={{ color: SOFT }}
+            >
+              {[
+                "Rebuilds every fill",
+                "Charts every trade",
+                "Reviews in plain English",
+                "Finds the habits behind your P/L",
+              ].map((t, i) => (
+                <li key={t} className="flex items-center gap-3">
+                  {i > 0 && (
+                    <span
+                      className="hidden h-1 w-1 rounded-full md:block"
+                      style={{ background: "rgba(255,255,255,0.22)" }}
+                    />
+                  )}
+                  {t}
+                </li>
               ))}
-            </div>
+            </ul>
             <p
-              className="mt-14 text-center text-[12.5px] tracking-wide"
+              className="mt-6 text-center text-[12px] tracking-wide"
               style={{ color: FAINT }}
             >
               Read-only broker access &nbsp;·&nbsp; Encrypted &nbsp;·&nbsp; Export
