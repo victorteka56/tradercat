@@ -58,7 +58,7 @@ export function TagPerformanceCard({ tags }: { tags: TagPerformance[] }) {
         <span className="text-[11px] text-ink-faint">all-time</span>
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-ink-soft">
-        What your own labels reveal — expectancy is the average result per trade.
+        Average result per trade.
       </p>
 
       {/* The one-line verdict. */}

@@ -39,8 +39,7 @@ export default async function AnalyticsPage() {
         <SurfaceCard className="p-8 text-center">
           <h2 className="text-[17px] font-semibold text-ink">No realized trades yet</h2>
           <p className="mx-auto mt-1.5 max-w-[340px] text-[13.5px] leading-relaxed text-ink-soft">
-            Analytics build from your closed trades. Import a broker export or
-            connect your brokerage and they&apos;ll fill in here.
+            They&apos;ll fill in as you close trades.
           </p>
           <Link
             href="/import"
