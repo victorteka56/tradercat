@@ -341,3 +341,10 @@ body {
     animation: none;
   }
 }
+
+/* Edge fade for the hero chart scenes: fully transparent at every edge,
+   most visible at centre — no hard cutoffs where a chart meets the frame. */
+.tc-scene-fade {
+  mask-image: radial-gradient(ellipse 62% 58% at 50% 50%, black 28%, transparent 96%);
+  -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 50%, black 28%, transparent 96%);
+}

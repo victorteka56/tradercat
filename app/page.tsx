@@ -115,8 +115,8 @@ export default function LandingPage() {
             carousel → dark scrim → text. */}
         <section className="relative overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-0">
-            {/* Scene 1 — equity curve (green), slow pan */}
-            <div className="tc-scene tc-scene-1">
+            {/* Scene 3 — equity curve (green), slow pan */}
+            <div className="tc-scene tc-scene-3 tc-scene-fade">
               <svg
                 viewBox="0 0 1440 320"
                 preserveAspectRatio="none"
@@ -144,8 +144,8 @@ export default function LandingPage() {
             </div>
 
             {/* Scene 2 — allocation donut (app palette), very slow spin */}
-            <div className="tc-scene tc-scene-2 flex items-center justify-center">
-              <svg viewBox="0 0 420 420" className="h-[130%] w-auto" style={{ opacity: 0.4 }}>
+            <div className="tc-scene tc-scene-2 tc-scene-fade flex items-center justify-center">
+              <svg viewBox="0 0 420 420" className="h-[88%] w-auto" style={{ opacity: 0.45 }}>
                 <g className="tc-spin">
                   <g transform="rotate(-90 210 210)">
                     <circle cx="210" cy="210" r="110" fill="none" stroke="#5B7FD4" strokeWidth="50" strokeDasharray="242 691" strokeDashoffset="0" />
@@ -157,15 +157,15 @@ export default function LandingPage() {
               </svg>
             </div>
 
-            {/* Scene 3 — monthly columns (violet), bars breathing in stagger */}
-            <div className="tc-scene tc-scene-3">
+            {/* Scene 1 — monthly columns (violet), bars breathing in stagger */}
+            <div className="tc-scene tc-scene-1 tc-scene-fade">
               <svg
                 viewBox="0 0 1440 320"
                 preserveAspectRatio="none"
                 className="h-full w-full"
                 style={{ opacity: 0.42 }}
               >
-                {[120, 180, 90, 220, 160, 240, 130, 200, 170, 110, 230, 150, 190, 210].map(
+                {[96, 144, 72, 176, 128, 192, 104, 160, 136, 88, 184, 120, 152, 168].map(
                   (h, i) => (
                     <rect
                       key={i}
@@ -184,7 +184,7 @@ export default function LandingPage() {
             </div>
 
             {/* Scene 4 — running P/L (amber) dipping under a zero line, pan */}
-            <div className="tc-scene tc-scene-4">
+            <div className="tc-scene tc-scene-4 tc-scene-fade">
               <svg
                 viewBox="0 0 1440 320"
                 preserveAspectRatio="none"
@@ -228,9 +228,9 @@ export default function LandingPage() {
           </div>
 
           <div className="relative mx-auto max-w-[1060px] px-6 py-24 text-center lg:py-36">
-            <h1 className="font-display mx-auto max-w-[800px] text-[38px] font-semibold leading-[1.06] tracking-[-0.02em] lg:text-[56px]">
-              Every trade,
-              <br className="lg:hidden" />{" "}
+            <h1 className="font-display mx-auto max-w-[800px] text-[38px] font-semibold leading-[1.08] tracking-[-0.02em] lg:text-[56px]">
+              The journal that
+              <br />
               <span
                 style={{
                   background: `linear-gradient(100deg, ${GREEN}, #7EE8C0 55%, ${GREEN})`,
@@ -239,7 +239,7 @@ export default function LandingPage() {
                   color: "transparent",
                 }}
               >
-                explained.
+                explains every trade.
               </span>
             </h1>
 
